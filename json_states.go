@@ -2,8 +2,45 @@ package jsonpath
 
 import "unicode"
 
-func lexRoot(l *lexer) stateFn {
-	if err := lexObject; err != nil {
+const (
+	jsonEOF = iota
+	jsonError
+
+	jsonBraceLeft
+	jsonBraceRight
+	jsonBracketLeft
+	jsonBracketRight
+	jsonColon
+	jsonComma
+	jsonNumber
+	jsonString
+	jsonNull
+	jsonKey
+	jsonBool
+)
+
+var jsonTokenNames = map[int]string{
+	jsonEOF:   "EOF",
+	jsonError: "ERROR",
+
+	jsonBraceLeft:    "{",
+	jsonBraceRight:   "}",
+	jsonBracketLeft:  "[",
+	jsonBracketRight: "]",
+	jsonColon:        ":",
+	jsonComma:        ",",
+	jsonNumber:       "NUMBER",
+	jsonString:       "STRING",
+	jsonNull:         "NULL",
+	jsonKey:          "KEY",
+	jsonBool:         "BOOL",
+}
+
+var JSON = lexJsonRoot
+
+// TODO: Handle array at root as well as object
+func lexJsonRoot(l *lexer) stateFn {
+	if err := lexJsonObject; err != nil {
 		return err
 	}
 	if l.stack.Peek() != nil {
@@ -12,17 +49,17 @@ func lexRoot(l *lexer) stateFn {
 	return nil
 }
 
-func lexObject(l *lexer) stateFn {
+func lexJsonObject(l *lexer) stateFn {
 	if l.stopped {
 		return l.errorf(ErrorEarlyTermination)
 	}
 	l.ignoreSpaceRun()
 	cur := l.peek()
 	if cur != '{' {
-		return l.errorf("Expected '{' as start of object instead of '%#U'", cur)
+		return l.errorf("Expected '{' as start of object instead of '%c' %#U", cur, cur)
 	}
 	l.take()
-	l.emit(TOKEN_BRACE_LEFT)
+	l.emit(jsonBraceLeft)
 
 	l.ignoreSpaceRun()
 	cur = l.peek()
@@ -31,29 +68,29 @@ func lexObject(l *lexer) stateFn {
 	case '"':
 		next = takeKeyValuePairs
 	case '}':
-		if top := l.stack.Peek(); top != nil && top.(int) != TOKEN_BRACE_LEFT {
+		if top := l.stack.Peek(); top != nil && top.(int) != jsonBraceLeft {
 			next = l.errorf("Received '%#U' but has no matching '{", cur)
 			break
 		}
 		l.take()
-		l.emit(TOKEN_BRACE_RIGHT)
+		l.emit(jsonBraceRight)
 		next = nil
 	default:
-		next = l.errorf("Expected \" or } inside an object instead of '%#U'", cur)
+		next = l.errorf("Expected \" or } inside an object instead of '%c' %#U", cur, cur)
 	}
 	return next
 }
 
-func hasMatchingBracket(l *lexer, t int) bool {
+func lexJsonMatchingBracket(l *lexer, t int) bool {
 	top := l.stack.Peek()
 	if top == nil {
 		return false
 	}
 	openToken := top.(int)
-	if t == TOKEN_BRACKET_RIGHT {
-		return openToken == TOKEN_BRACKET_LEFT
-	} else if t == TOKEN_BRACE_RIGHT {
-		return openToken == TOKEN_BRACE_LEFT
+	if t == jsonBracketRight {
+		return openToken == jsonBracketLeft
+	} else if t == jsonBraceRight {
+		return openToken == jsonBraceLeft
 	}
 	return false
 }
@@ -75,36 +112,36 @@ func takeKeyValuePairs(l *lexer) stateFn {
 		switch cur {
 		case ',':
 			l.take()
-			l.emit(TOKEN_COMMA)
+			l.emit(jsonComma)
 			continue
 		case '}':
-			if top := l.stack.Peek(); top != nil && top.(int) != TOKEN_BRACE_LEFT {
+			if top := l.stack.Peek(); top != nil && top.(int) != jsonBraceLeft {
 				return l.errorf("Received '%#U' but has no matching '{", cur)
 			}
 			l.take()
-			l.emit(TOKEN_BRACE_RIGHT)
+			l.emit(jsonBraceRight)
 			return nil
 		default:
-			return l.errorf("Unexpected character after value: %#U", cur)
+			return l.errorf("Unexpected character after value: '%c' %#U", cur, cur)
 		}
 	}
 }
 
-func lexArray(l *lexer) stateFn {
+func lexJsonArray(l *lexer) stateFn {
 	l.ignoreSpaceRun()
 	cur := l.peek()
 	if cur != '[' {
-		return l.errorf("Expected '[' as start of array instead of '%#U'", cur)
+		return l.errorf("Expected '[' as start of array instead of '%c' %#U", cur, cur)
 	}
 	l.take()
-	l.emit(TOKEN_BRACKET_LEFT)
+	l.emit(jsonBracketLeft)
 	l.ignoreSpaceRun()
 	cur = l.peek()
 	// var next stateFn
 	switch cur {
 	case ']':
 		l.take()
-		l.emit(TOKEN_BRACKET_RIGHT)
+		l.emit(jsonBracketRight)
 	default:
 	valueLoop:
 		for {
@@ -115,17 +152,19 @@ func lexArray(l *lexer) stateFn {
 			if err := takeValue(l); err != nil {
 				return err
 			}
+
+			l.ignoreSpaceRun()
 			cur = l.peek()
 			switch cur {
 			case ',':
 				l.take()
-				l.emit(TOKEN_COMMA)
+				l.emit(jsonComma)
 			case ']':
 				l.take()
-				l.emit(TOKEN_BRACKET_RIGHT)
+				l.emit(jsonBracketRight)
 				break valueLoop
 			default:
-				return l.errorf("Expected character after array value: '%#U'", cur)
+				return l.errorf("Unexpected character after array value: '%c' %#U", cur, cur)
 			}
 		}
 	}
@@ -141,15 +180,15 @@ func takeKeyAndColon(l *lexer) stateFn {
 	if err := takeString(l); err != nil {
 		return err
 	}
-	l.emit(TOKEN_KEY)
+	l.emit(jsonKey)
 	l.ignoreSpaceRun()
 
 	cur := l.peek()
 	if cur != ':' {
-		return l.errorf("Expected ':' after key string instead of '%#U'", cur)
+		return l.errorf("Expected ':' after key string instead of '%c' %#U", cur, cur)
 	}
 	l.take()
-	l.emit(TOKEN_COLON)
+	l.emit(jsonColon)
 	return nil
 }
 
@@ -169,37 +208,37 @@ func takeValue(l *lexer) stateFn {
 		if err = takeString(l); err != nil {
 			return err
 		}
-		l.emit(TOKEN_STRING)
+		l.emit(jsonString)
 	case isNumericStart(cur):
 		if err := takeNumeric(l); err != nil {
 			return err
 		}
-		l.emit(TOKEN_NUMBER)
+		l.emit(jsonNumber)
 	case cur == 't':
 		if success := l.acceptString("true"); !success {
 			return l.errorf("Could not parse value as 'true'")
 		}
-		l.emit(TOKEN_BOOL)
+		l.emit(jsonBool)
 	case cur == 'f':
 		if success := l.acceptString("false"); !success {
 			return l.errorf("Could not parse value as 'false'")
 		}
-		l.emit(TOKEN_BOOL)
+		l.emit(jsonBool)
 	case cur == 'n':
 		if success := l.acceptString("null"); !success {
 			return l.errorf("Could not parse value as 'null'")
 		}
-		l.emit(TOKEN_NULL)
+		l.emit(jsonNull)
 	case cur == '{':
-		for state := lexObject; state != nil; {
+		for state := lexJsonObject; state != nil; {
 			state = state(l)
 		}
 	case cur == '[':
-		for state := lexArray; state != nil; {
+		for state := lexJsonArray; state != nil; {
 			state = state(l)
 		}
 	default:
-		return l.errorf("Unexpected character as start of value: %#U", cur)
+		return l.errorf("Unexpected character as start of value: '%c' %#U", cur, cur)
 	}
 
 	return nil
@@ -213,14 +252,14 @@ func takeNumeric(l *lexer) stateFn {
 		l.take()
 		cur = l.peek()
 		if !unicode.IsDigit(cur) {
-			return l.errorf("Expected digit after dash instead of '%#U'", cur)
+			return l.errorf("Expected digit after dash instead of '%c' %#U", cur, cur)
 		}
 		l.acceptWhere(unicode.IsDigit)
 	case unicode.IsDigit(cur):
 		l.take()
 		l.acceptWhere(unicode.IsDigit)
 	default:
-		return l.errorf("Expected digit or dash instead of '%#U'", cur)
+		return l.errorf("Expected digit or dash instead of '%c' %#U", cur, cur)
 	}
 
 	takeExponent := func(l *lexer) stateFn {
@@ -234,13 +273,13 @@ func takeNumeric(l *lexer) stateFn {
 		case r == '+', r == '-':
 			l.take()
 			if r = l.peek(); !unicode.IsDigit(r) {
-				return l.errorf("Expected digit after numeric sign instead of '%#U'", cur)
+				return l.errorf("Expected digit after numeric sign instead of '%c' %#U", cur, cur)
 			}
 			l.acceptWhere(unicode.IsDigit)
 		case unicode.IsDigit(r):
 			l.acceptWhere(unicode.IsDigit)
 		default:
-			return l.errorf("Expected digit after 'e' instead of '%#U'", cur)
+			return l.errorf("Expected digit after 'e' instead of '%c' %#U", cur, cur)
 		}
 		return nil
 	}
@@ -252,7 +291,7 @@ func takeNumeric(l *lexer) stateFn {
 		l.take()
 		cur = l.peek()
 		if !unicode.IsDigit(cur) {
-			return l.errorf("Expected digit after '.' instead of '%#U'", cur)
+			return l.errorf("Expected digit after '.' instead of '%c' %#U", cur, cur)
 		}
 		l.acceptWhere(unicode.IsDigit)
 		if err := takeExponent(l); err != nil {
@@ -271,7 +310,7 @@ func takeString(l *lexer) stateFn {
 	l.ignoreSpaceRun()
 	cur := l.peek()
 	if cur != '"' {
-		return l.errorf("Expected \" as start of string instead of '%#U'", cur)
+		return l.errorf("Expected \" as start of string instead of '%c' %#U", cur, cur)
 	}
 	l.take()
 

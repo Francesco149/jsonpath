@@ -5,27 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"unicode"
 	"unicode/utf8"
 )
 
 type Pos uint64
-
-const (
-	TOKEN_EOF = iota
-	TOKEN_ERROR
-	TOKEN_BRACE_LEFT
-	TOKEN_BRACE_RIGHT
-	TOKEN_BRACKET_LEFT
-	TOKEN_BRACKET_RIGHT
-	TOKEN_COLON
-	TOKEN_COMMA
-	TOKEN_NUMBER
-	TOKEN_STRING
-	TOKEN_NULL
-	TOKEN_KEY
-	TOKEN_BOOL
-)
 
 const (
 	eof = -1
@@ -34,36 +17,33 @@ const (
 	ErrorEarlyTermination = "Lexer was stopped early"
 )
 
-var tokenNames = map[int]string{
-	TOKEN_EOF:           "EOF",
-	TOKEN_ERROR:         "ERROR",
-	TOKEN_BRACE_LEFT:    "{",
-	TOKEN_BRACE_RIGHT:   "}",
-	TOKEN_BRACKET_LEFT:  "[",
-	TOKEN_BRACKET_RIGHT: "]",
-	TOKEN_COLON:         ":",
-	TOKEN_COMMA:         ",",
-	TOKEN_NUMBER:        "NUMBER",
-	TOKEN_STRING:        "STRING",
-	TOKEN_NULL:          "NULL",
-	TOKEN_KEY:           "KEY",
-	TOKEN_BOOL:          "BOOL",
-}
-
 type Item struct {
 	typ int
 	pos Pos // The starting position, in bytes, of this item in the input string.
 	val string
 }
 
-func (i Item) String() string {
-	name, exists := tokenNames[i.typ]
-	if exists {
-		return name
-		//return fmt.Sprintf("%s(%s)", i.val, name)
+func itemsDescription(items []*Item, nameMap map[int]string) []string {
+	vals := make([]string, len(items))
+
+	for i, item := range items {
+		var found bool
+		vals[i], found = nameMap[item.typ]
+		if !found {
+			vals[i] = item.val
+		}
 	}
-	return fmt.Sprintf("%q", i.val)
+	return vals
 }
+
+// func (i Item) String() string {
+// 	name, exists := tokenNames[i.typ]
+// 	if exists {
+// 		return name
+// 		//return fmt.Sprintf("%s(%s)", i.val, name)
+// 	}
+// 	return fmt.Sprintf("%q", i.val)
+// }
 
 type lexer struct {
 	input    io.RuneReader
@@ -90,8 +70,8 @@ func NewLexer(rr io.RuneScanner, bufferSize int) *lexer {
 
 type stateFn func(*lexer) stateFn
 
-func (l *lexer) run() {
-	for state := lexRoot; state != nil; {
+func (l *lexer) Run(initial stateFn) {
+	for state := initial; state != nil; {
 		state = state(l)
 	}
 	if !l.stopped {
@@ -136,11 +116,11 @@ func (l *lexer) emit(t int) {
 		return
 	}
 
-	if t == TOKEN_BRACKET_LEFT || t == TOKEN_BRACE_LEFT {
+	if t == jsonBracketLeft || t == jsonBraceLeft {
 		l.stack.Push(t)
 	}
 
-	if t == TOKEN_BRACKET_RIGHT || t == TOKEN_BRACE_RIGHT {
+	if t == jsonBracketRight || t == jsonBraceRight {
 		l.stack.Pop()
 	}
 
@@ -206,7 +186,7 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 		return nil
 	}
 
-	i := &Item{TOKEN_ERROR, l.width + 1, fmt.Sprintf(format, args...)}
+	i := &Item{jsonError, l.width + 1, fmt.Sprintf(format, args...)}
 	select {
 	case l.items <- i:
 		close(l.items)
@@ -224,8 +204,4 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 // isSpace reports whether r is a space character or newline.
 func isSpace(r rune) bool {
 	return r == ' ' || r == '\t' || r == '\r' || r == '\n'
-}
-
-func isNumericStart(r rune) bool {
-	return r == '-' || unicode.IsDigit(r)
 }
