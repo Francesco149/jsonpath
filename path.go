@@ -9,15 +9,15 @@ import (
 	"strings"
 )
 
-func GetByString(input, path string) (<-chan []interface{}, error) {
+func GetByString(input, path string) <-chan []interface{} {
 	reader := strings.NewReader(input)
 	return Get(reader, path)
 }
 
-func Get(rs io.RuneScanner, path string) (<-chan []interface{}, error) {
+func Get(rs io.RuneScanner, path string) <-chan []interface{} {
 	query, err := parsePath(path)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	lexer := NewLexer(rs, 10)

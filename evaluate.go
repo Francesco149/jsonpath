@@ -128,17 +128,19 @@ func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) 
 	return true, nil
 }
 
-func (e *evaluator) run(l *lexer, keys []*key) (chan []interface{}, error) {
-	_, err := e.perform(l.items, keys)
+func (e *evaluator) run(l *lexer, keys []*key) chan []interface{} {
+	go func() {
+		_, _ = e.perform(l.items, keys)
 
-	l.Kill()
-	for _ = range l.items {
-		// deflate buffer
-	}
+		l.Kill()
+		for _ = range l.items {
+			// deflate buffer
+		}
 
-	close(e.results)
+		close(e.results)
+	}()
 
-	return e.results, err
+	return e.results
 }
 
 func traverseValueTree(jsonStream <-chan *Item, capture bool) (string, error) {
