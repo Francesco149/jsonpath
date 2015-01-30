@@ -14,29 +14,29 @@ func TestLexerMethods(t *testing.T) {
 	lexer := NewLexer(reader, 0)
 
 	r := lexer.take()
-	as.Equal(r, '{', "First rune should match")
+	as.Equal('{', r, "First rune should match")
 	r = lexer.take()
-	as.Equal(r, '"', "Second rune should match")
+	as.Equal('"', r, "Second rune should match")
 	r = lexer.take()
-	as.Equal(r, 'k', "Third rune should match")
+	as.Equal('k', r, "Third rune should match")
 	// Try peeking
 	r = lexer.peek()
-	as.Equal(r, 'e', "Peek fifth rune should match")
+	as.Equal('e', r, "Peek fifth rune should match")
 	// Second peek should yield same result
 	r = lexer.peek()
-	as.Equal(r, 'e', "Peek fifth rune should match")
+	as.Equal('e', r, "Peek fifth rune should match")
 	r = lexer.take()
 	// Taking should yield peeked result
-	as.Equal(r, 'e', "Rune should match")
+	as.Equal('e', r, "Rune should match")
 	// Taking should yield next result
 	r = lexer.take()
-	as.Equal(r, 'y', "Rune should match")
+	as.Equal('y', r, "Rune should match")
 	r = lexer.take()
-	as.Equal(r, '"', "Rune should match")
+	as.Equal('"', r, "Rune should match")
 	r = lexer.peek()
-	as.Equal(r, ' ', "Rune should match")
+	as.Equal(' ', r, "Rune should match")
 	lexer.skip()
 
 	r = lexer.peek()
-	as.Equal(r, ':', "Rune should match")
+	as.Equal(':', r, "Rune should match")
 }

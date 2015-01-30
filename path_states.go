@@ -68,6 +68,12 @@ func lexKey(l *lexer) stateFn {
 	// TODO: Support globbing of keys
 	inQuotes := false
 	cur := l.peek()
+	if cur == '*' {
+		l.take()
+		l.emit(pathWildcard)
+		return lexAfterElement
+	}
+
 	if cur == '"' {
 		l.skip()
 		inQuotes = true

@@ -36,21 +36,12 @@ func itemsDescription(items []*Item, nameMap map[int]string) []string {
 	return vals
 }
 
-// func (i Item) String() string {
-// 	name, exists := tokenNames[i.typ]
-// 	if exists {
-// 		return name
-// 		//return fmt.Sprintf("%s(%s)", i.val, name)
-// 	}
-// 	return fmt.Sprintf("%q", i.val)
-// }
-
 type lexer struct {
 	input    io.RuneReader
 	nextRune *rune
 	lexeme   bytes.Buffer
 	width    Pos // width of all items until now
-	stack    *stack
+	stack    *intstack
 	lastItem *Item
 	items    chan *Item
 	kill     chan struct{}
@@ -63,7 +54,7 @@ func NewLexer(rr io.RuneScanner, bufferSize int) *lexer {
 		items: make(chan *Item, bufferSize),
 		kill:  make(chan struct{}),
 		input: rr,
-		stack: &stack{},
+		stack: newIntStack(),
 	}
 	return &l
 }
@@ -71,34 +62,31 @@ func NewLexer(rr io.RuneScanner, bufferSize int) *lexer {
 type stateFn func(*lexer) stateFn
 
 func (l *lexer) Run(initial stateFn) {
-	for state := initial; state != nil; {
-		state = state(l)
-	}
-	if !l.stopped {
-		close(l.items)
+	go func() {
+		for state := initial; state != nil; {
+			state = state(l)
+		}
+		if !l.stopped {
+			close(l.items)
+		}
+	}()
+}
+
+func (l *lexer) Kill() {
+	if !l.stopped { // not a cure-all
+		close(l.kill)
 	}
 }
 
 func (l *lexer) take() rune {
-	if l.nextRune != nil {
-		nr := *l.nextRune
-		l.nextRune = nil
-		return nr
+	if l.nextRune == nil {
+		l.peek()
 	}
 
-	r, size, err := l.input.ReadRune()
-
-	if r == 0xEF && size == 1 { // Replacement Character
-		l.err = errors.New(ErrorErroneousUnicode)
-		return r
-	}
-
-	if err == io.EOF {
-		return eof
-	}
-
-	l.lexeme.WriteRune(r)
-	return r
+	nr := *l.nextRune
+	l.nextRune = nil
+	l.lexeme.WriteRune(nr)
+	return nr
 }
 
 func (l *lexer) skip() {

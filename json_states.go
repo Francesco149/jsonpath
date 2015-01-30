@@ -68,7 +68,7 @@ func lexJsonObject(l *lexer) stateFn {
 	case '"':
 		next = takeKeyValuePairs
 	case '}':
-		if top := l.stack.Peek(); top != nil && top.(int) != jsonBraceLeft {
+		if top := l.stack.Peek(); top != nil && *top != jsonBraceLeft {
 			next = l.errorf("Received '%#U' but has no matching '{", cur)
 			break
 		}
@@ -86,7 +86,7 @@ func lexJsonMatchingBracket(l *lexer, t int) bool {
 	if top == nil {
 		return false
 	}
-	openToken := top.(int)
+	openToken := *top
 	if t == jsonBracketRight {
 		return openToken == jsonBracketLeft
 	} else if t == jsonBraceRight {
@@ -115,7 +115,7 @@ func takeKeyValuePairs(l *lexer) stateFn {
 			l.emit(jsonComma)
 			continue
 		case '}':
-			if top := l.stack.Peek(); top != nil && top.(int) != jsonBraceLeft {
+			if top := l.stack.Peek(); top != nil && *top != jsonBraceLeft {
 				return l.errorf("Received '%#U' but has no matching '{", cur)
 			}
 			l.take()

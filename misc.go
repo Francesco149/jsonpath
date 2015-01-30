@@ -6,10 +6,21 @@ import (
 	"unicode"
 )
 
-func funnelToArray(ch chan *Item) []*Item {
+func funnelToArray(ch <-chan *Item) []*Item {
 	vals := make([]*Item, 0)
 	for l := range ch {
 		vals = append(vals, l)
+	}
+	return vals
+}
+
+func funnelUntil(ch <-chan *Item, until func(*Item) bool) []*Item {
+	vals := make([]*Item, 0)
+	for i := range ch {
+		vals = append(vals, i)
+		if until(i) {
+			break
+		}
 	}
 	return vals
 }
