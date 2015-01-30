@@ -21,7 +21,7 @@ func TestValidPaths(t *testing.T) {
 		reader := strings.NewReader(test.input)
 		lexer := NewLexer(reader, 0)
 		lexer.Run(PATH)
-		items := funnelToArray(lexer.items)
+		items := itemsToArray(lexer.items)
 
 		as.True(typeIsEqual(items, test.items, true), "Testing of %s: got\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, pathTokenNames), itemsDescription(test.items, pathTokenNames))
 	}

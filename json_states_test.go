@@ -30,7 +30,7 @@ func TestValidJson(t *testing.T) {
 		reader := strings.NewReader(test.input)
 		lexer := NewLexer(reader, 0)
 		lexer.Run(JSON)
-		items := funnelToArray(lexer.items)
+		items := itemsToArray(lexer.items)
 
 		as.True(typeIsEqual(items, test.items, true), "Testing of %s: got\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
 	}
@@ -57,7 +57,7 @@ func TestMalformedJson(t *testing.T) {
 		reader := strings.NewReader(test.input)
 		lexer := NewLexer(reader, 0)
 		lexer.Run(JSON)
-		items := funnelToArray(lexer.items)
+		items := itemsToArray(lexer.items)
 
 		as.True(typeIsEqual(items, test.items, false), "Testing of %s: got\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
 	}
@@ -83,7 +83,7 @@ func TestEarlyTerminationForJSON(t *testing.T) {
 	close(lexer.kill)
 
 	wg.Wait()
-	remainingItems := funnelToArray(lexer.items)
+	remainingItems := itemsToArray(lexer.items)
 	// TODO: Occasionally fails - rethink this
 	_ = as
 	_ = remainingItems

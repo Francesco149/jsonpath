@@ -8,13 +8,13 @@ import (
 
 type evaluator struct {
 	locStack *stack
-	results  [][]interface{}
+	results  chan []interface{}
 }
 
 func newEvaluator() *evaluator {
 	e := &evaluator{
 		locStack: newStack(),
-		results:  make([][]interface{}, 0),
+		results:  make(chan []interface{}, 100),
 	}
 	return e
 }
@@ -27,7 +27,7 @@ func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) 
 		}
 		line := e.locStack.Clone()
 		line.Push(val)
-		e.results = append(e.results, line.ToArray())
+		e.results <- line.ToArray()
 		return true, nil
 	}
 
@@ -128,13 +128,15 @@ func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) 
 	return true, nil
 }
 
-func (e *evaluator) run(l *lexer, keys []*key) ([][]interface{}, error) {
+func (e *evaluator) run(l *lexer, keys []*key) (chan []interface{}, error) {
 	_, err := e.perform(l.items, keys)
 
 	l.Kill()
 	for _ = range l.items {
 		// deflate buffer
 	}
+
+	close(e.results)
 
 	return e.results, err
 }

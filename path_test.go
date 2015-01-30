@@ -83,6 +83,14 @@ func TestPathQuery(t *testing.T) {
 	for _, t := range tests {
 		results, err := GetByString(t.json, t.path)
 		as.NoError(err)
-		as.Equal(t.expected, results)
+		as.Equal(t.expected, toInterfaceArray(results))
 	}
+}
+
+func toInterfaceArray(ch <-chan []interface{}) [][]interface{} {
+	vals := make([][]interface{}, 0)
+	for l := range ch {
+		vals = append(vals, l)
+	}
+	return vals
 }

@@ -9,12 +9,12 @@ import (
 	"strings"
 )
 
-func GetByString(input, path string) ([][]interface{}, error) {
+func GetByString(input, path string) (<-chan []interface{}, error) {
 	reader := strings.NewReader(input)
 	return Get(reader, path)
 }
 
-func Get(rs io.RuneScanner, path string) ([][]interface{}, error) {
+func Get(rs io.RuneScanner, path string) (<-chan []interface{}, error) {
 	query, err := parsePath(path)
 	if err != nil {
 		return nil, err
