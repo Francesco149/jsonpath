@@ -19,16 +19,16 @@ func newEvaluator() *evaluator {
 	return e
 }
 
-func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) {
+func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) error {
 	if len(keys) == 0 {
 		val, err := traverseValueTree(jsonStream, true)
 		if err != nil {
-			return true, err
+			return err
 		}
 		line := e.locStack.Clone()
 		line.Push(val)
 		e.results <- line.ToArray()
-		return true, nil
+		return nil
 	}
 
 	k := keys[0]
@@ -41,7 +41,7 @@ func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) 
 	case keyTypeIndex, keyTypeIndexRange, keyTypeIndexWild:
 		start := <-jsonStream
 		if start.typ != jsonBracketLeft {
-			return true, fmt.Errorf("Expected [ instead of %s", jsonTokenNames[start.typ])
+			return nil
 		}
 
 		i := int64(0)
@@ -51,8 +51,8 @@ func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) 
 				traverseValueTree(jsonStream, false)
 			} else if i >= k.indexStart && i <= k.indexEnd {
 				e.locStack.Push(i)
-				if ok, err := e.perform(jsonStream, nextKeys); !ok || err != nil {
-					return ok, err
+				if err := e.perform(jsonStream, nextKeys); err != nil {
+					return err
 				}
 				e.locStack.Pop()
 
@@ -60,18 +60,18 @@ func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) 
 			comma := <-jsonStream
 			switch comma.typ {
 			case jsonComma:
-				break
+				//break
 			case jsonBracketRight:
 				break arrayValues
 			default:
-				return true, fmt.Errorf("Expected ',' or ']' instead of %s", jsonTokenNames[comma.typ])
+				return fmt.Errorf("Expected ',' or ']' instead of %s", jsonTokenNames[comma.typ])
 			}
 			i++
 		}
 	case keyTypeName, keyTypeNameList, keyTypeNameWild:
 		start := <-jsonStream
 		if start.typ != jsonBraceLeft {
-			return true, fmt.Errorf("Expected { instead of %s", jsonTokenNames[start.typ])
+			return nil
 		}
 
 		keysCaptured := 0
@@ -79,7 +79,7 @@ func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) 
 		for {
 			name := <-jsonStream
 			if name.typ != jsonKey {
-				return true, fmt.Errorf("Expected key instead of %s", jsonTokenNames[name.typ])
+				return fmt.Errorf("Expected key instead of %s", jsonTokenNames[name.typ])
 			}
 			trimmedName := name.val[1 : len(name.val)-1]
 
@@ -95,15 +95,15 @@ func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) 
 
 			colon := <-jsonStream
 			if colon.typ != jsonColon {
-				return true, fmt.Errorf("Expected colon instead of %s", jsonTokenNames[colon.typ])
+				return fmt.Errorf("Expected colon instead of %s", jsonTokenNames[colon.typ])
 			}
 
 			if capture {
 				keysCaptured++
 
 				e.locStack.Push(trimmedName)
-				if ok, err := e.perform(jsonStream, nextKeys); !ok || err != nil {
-					return ok, err
+				if err := e.perform(jsonStream, nextKeys); err != nil {
+					return err
 				}
 				e.locStack.Pop()
 			} else {
@@ -116,21 +116,21 @@ func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) (bool, error) 
 				//if k.typ != keyTypeNameWild && keysCaptured == len(k.keys) {
 				//	break keyOp // early terminate operation
 				//} else {
-				break
+				// break
 				//}
 			case jsonBraceRight:
 				break nameValuePairs
 			default:
-				return true, fmt.Errorf("Expected ',' or '}' instead of %s", jsonTokenNames[comma.typ])
+				return fmt.Errorf("Expected ',' or '}' instead of %s", jsonTokenNames[comma.typ])
 			}
 		}
 	}
-	return true, nil
+	return nil
 }
 
 func (e *evaluator) run(l *lexer, keys []*key) chan []interface{} {
 	go func() {
-		_, _ = e.perform(l.items, keys)
+		_ = e.perform(l.items, keys)
 
 		l.Kill()
 		for _ = range l.items {

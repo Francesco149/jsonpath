@@ -81,8 +81,7 @@ func TestPathQuery(t *testing.T) {
 	as := assert.New(t)
 
 	for _, t := range tests {
-		results, err := GetByString(t.json, t.path)
-		as.NoError(err)
+		results := GetByString(t.json, t.path)
 		as.Equal(t.expected, toInterfaceArray(results))
 	}
 }
