@@ -2,16 +2,15 @@ package jsonpath
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"unicode/utf8"
 )
 
 type Pos uint64
 
 const (
-	eof = -1
+	eof     = -1
+	noValue = -2
 
 	ErrorErroneousUnicode = "Malformed UTF-8"
 	ErrorEarlyTermination = "Lexer was stopped early"
@@ -37,8 +36,8 @@ func itemsDescription(items []*Item, nameMap map[int]string) []string {
 }
 
 type lexer struct {
-	input    io.RuneReader
-	nextRune *rune
+	input    io.Reader
+	nextByte int
 	lexeme   bytes.Buffer
 	width    Pos // width of all items until now
 	stack    *intstack
@@ -49,12 +48,13 @@ type lexer struct {
 	err      error
 }
 
-func NewLexer(rr io.RuneScanner, bufferSize int) *lexer {
+func NewLexer(rr io.Reader, bufferSize int) *lexer {
 	l := lexer{
-		items: make(chan *Item, bufferSize),
-		kill:  make(chan struct{}),
-		input: rr,
-		stack: newIntStack(),
+		items:    make(chan *Item, bufferSize),
+		kill:     make(chan struct{}),
+		input:    rr,
+		stack:    newIntStack(),
+		nextByte: noValue,
 	}
 	return &l
 }
@@ -78,23 +78,21 @@ func (l *lexer) Kill() {
 	}
 }
 
-func (l *lexer) take() rune {
-	if l.nextRune == nil {
+func (l *lexer) take() int {
+	if l.nextByte == noValue {
 		l.peek()
 	}
 
-	nr := *l.nextRune
-	l.nextRune = nil
-	l.lexeme.WriteRune(nr)
+	nr := l.nextByte
+	l.nextByte = noValue
+	l.lexeme.WriteByte(byte(nr))
 	return nr
 }
 
 func (l *lexer) skip() {
-	if l.nextRune != nil {
-		nr := *l.nextRune
-		l.nextRune = nil
-		size := utf8.RuneLen(nr)
-		l.width += Pos(size)
+	if l.nextByte != noValue {
+		l.nextByte = noValue
+		l.width++
 		l.peek()
 	}
 }
@@ -124,37 +122,32 @@ func (l *lexer) emit(t int) {
 	l.lexeme.Truncate(0)
 }
 
-func (l *lexer) peek() rune {
-	if l.nextRune != nil {
-		return *l.nextRune
+func (l *lexer) peek() int {
+	if l.nextByte != noValue {
+		return l.nextByte
 	}
 
-	r, size, err := l.input.ReadRune()
-	l.nextRune = &r
-
-	if r == 0xEF && size == 1 { // Replacement Character
-		l.err = errors.New(ErrorErroneousUnicode)
-		return r
-	}
+	var r [1]byte
+	_, err := l.input.Read(r[:])
 
 	if err == io.EOF {
-		e := rune(-1)
-		l.nextRune = &e
-		return e
+		l.nextByte = eof
+		return eof
 	}
 
-	return r
+	l.nextByte = int(r[0])
+	return l.nextByte
 }
 
-func (l *lexer) acceptWhere(where func(rune) bool) {
+func (l *lexer) acceptWhere(where func(int) bool) {
 	for where(l.peek()) {
 		l.take()
 	}
 }
 
 func (l *lexer) acceptString(str string) bool {
-	for _, r := range str {
-		if v := l.peek(); v == r {
+	for _, r := range []byte(str) {
+		if v := l.peek(); v == int(r) {
 			l.take()
 		} else {
 			return false
@@ -190,6 +183,6 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 }
 
 // isSpace reports whether r is a space character or newline.
-func isSpace(r rune) bool {
+func isSpace(r int) bool {
 	return r == ' ' || r == '\t' || r == '\r' || r == '\n'
 }

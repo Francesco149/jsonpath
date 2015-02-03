@@ -1,7 +1,5 @@
 package jsonpath
 
-import "unicode"
-
 const (
 	pathEOF = iota
 	pathError
@@ -119,7 +117,7 @@ func lexPathArray(l *lexer) stateFn {
 	cur = l.peek()
 	switch {
 	case isNumericStart(cur):
-		l.acceptWhere(unicode.IsDigit)
+		l.acceptWhere(isDigit)
 		l.emit(pathIndex)
 	case cur == '*':
 		l.take()

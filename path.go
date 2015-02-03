@@ -14,7 +14,7 @@ func GetByString(input, path string) <-chan []interface{} {
 	return Get(reader, path)
 }
 
-func Get(rs io.RuneScanner, path string) <-chan []interface{} {
+func Get(rs io.Reader, path string) <-chan []interface{} {
 	query, err := parsePath(path)
 	if err != nil {
 		return nil

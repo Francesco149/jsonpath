@@ -3,7 +3,6 @@ package jsonpath
 import (
 	"fmt"
 	"math"
-	"unicode"
 )
 
 func itemsToArray(ch <-chan *Item) []*Item {
@@ -25,8 +24,12 @@ func toArrayUntil(ch <-chan *Item, until func(*Item) bool) []*Item {
 	return vals
 }
 
-func isNumericStart(r rune) bool {
-	return r == '-' || unicode.IsDigit(r)
+func isDigit(cur int) bool {
+	return (cur >= '0' && cur <= '9')
+}
+
+func isNumericStart(r int) bool {
+	return r == '-' || isDigit(r)
 }
 
 // Testing

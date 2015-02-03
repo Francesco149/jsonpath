@@ -1,7 +1,5 @@
 package jsonpath
 
-import "unicode"
-
 const (
 	jsonEOF = iota
 	jsonError
@@ -201,39 +199,39 @@ func takeValue(l *lexer) stateFn {
 	cur := l.peek()
 	var err stateFn
 
-	switch {
-	case cur == eof:
+	switch cur {
+	case eof:
 		return l.errorf("Unexpected EOF instead of value")
-	case cur == '"':
+	case '"':
 		if err = takeString(l); err != nil {
 			return err
 		}
 		l.emit(jsonString)
-	case isNumericStart(cur):
+	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		if err := takeNumeric(l); err != nil {
 			return err
 		}
 		l.emit(jsonNumber)
-	case cur == 't':
+	case 't':
 		if success := l.acceptString("true"); !success {
 			return l.errorf("Could not parse value as 'true'")
 		}
 		l.emit(jsonBool)
-	case cur == 'f':
+	case 'f':
 		if success := l.acceptString("false"); !success {
 			return l.errorf("Could not parse value as 'false'")
 		}
 		l.emit(jsonBool)
-	case cur == 'n':
+	case 'n':
 		if success := l.acceptString("null"); !success {
 			return l.errorf("Could not parse value as 'null'")
 		}
 		l.emit(jsonNull)
-	case cur == '{':
+	case '{':
 		for state := lexJsonObject; state != nil; {
 			state = state(l)
 		}
-	case cur == '[':
+	case '[':
 		for state := lexJsonArray; state != nil; {
 			state = state(l)
 		}
@@ -251,13 +249,13 @@ func takeNumeric(l *lexer) stateFn {
 	case cur == '-':
 		l.take()
 		cur = l.peek()
-		if !unicode.IsDigit(cur) {
+		if !isDigit(cur) {
 			return l.errorf("Expected digit after dash instead of '%c' %#U", cur, cur)
 		}
-		l.acceptWhere(unicode.IsDigit)
-	case unicode.IsDigit(cur):
+		l.acceptWhere(isDigit)
+	case isDigit(cur):
 		l.take()
-		l.acceptWhere(unicode.IsDigit)
+		l.acceptWhere(isDigit)
 	default:
 		return l.errorf("Expected digit or dash instead of '%c' %#U", cur, cur)
 	}
@@ -272,12 +270,12 @@ func takeNumeric(l *lexer) stateFn {
 		switch {
 		case r == '+', r == '-':
 			l.take()
-			if r = l.peek(); !unicode.IsDigit(r) {
+			if r = l.peek(); !isDigit(r) {
 				return l.errorf("Expected digit after numeric sign instead of '%c' %#U", cur, cur)
 			}
-			l.acceptWhere(unicode.IsDigit)
-		case unicode.IsDigit(r):
-			l.acceptWhere(unicode.IsDigit)
+			l.acceptWhere(isDigit)
+		case isDigit(r):
+			l.acceptWhere(isDigit)
 		default:
 			return l.errorf("Expected digit after 'e' instead of '%c' %#U", cur, cur)
 		}
@@ -290,10 +288,10 @@ func takeNumeric(l *lexer) stateFn {
 	case '.':
 		l.take()
 		cur = l.peek()
-		if !unicode.IsDigit(cur) {
+		if !isDigit(cur) {
 			return l.errorf("Expected digit after '.' instead of '%c' %#U", cur, cur)
 		}
-		l.acceptWhere(unicode.IsDigit)
+		l.acceptWhere(isDigit)
 		if err := takeExponent(l); err != nil {
 			return err
 		}
@@ -314,19 +312,19 @@ func takeString(l *lexer) stateFn {
 	}
 	l.take()
 
-	var previous *rune
+	var previous int
 	for {
 		cur := l.peek()
 		if cur == eof {
 			return l.errorf("Unexpected EOF in string")
-		} else if cur == '"' && (previous == nil || *previous != '\\') {
+		} else if cur == '"' && (previous == noValue || previous != '\\') {
 			l.take()
 			break
 		} else {
 			l.take()
 		}
 
-		previous = &cur
+		previous = cur
 	}
 	return nil
 }
