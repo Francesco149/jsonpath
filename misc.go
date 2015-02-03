@@ -5,19 +5,21 @@ import (
 	"math"
 )
 
-func itemsToArray(ch <-chan *Item) []*Item {
-	vals := make([]*Item, 0)
+func itemsToArray(ch <-chan Item) []*Item {
+	vals := make([]Item, 0)
+	valPtrs := make([]*Item, 0)
 	for l := range ch {
 		vals = append(vals, l)
+		valPtrs = append(valPtrs, &vals[len(vals)-1])
 	}
-	return vals
+	return valPtrs
 }
 
-func toArrayUntil(ch <-chan *Item, until func(*Item) bool) []*Item {
-	vals := make([]*Item, 0)
+func toArrayUntil(ch <-chan Item, until func(*Item) bool) []Item {
+	vals := make([]Item, 0)
 	for i := range ch {
 		vals = append(vals, i)
-		if until(i) {
+		if until(&i) {
 			break
 		}
 	}

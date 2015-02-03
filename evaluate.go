@@ -19,7 +19,7 @@ func newEvaluator() *evaluator {
 	return e
 }
 
-func (e *evaluator) perform(jsonStream <-chan *Item, keys []*key) error {
+func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
 	if len(keys) == 0 {
 		val, err := traverseValueTree(jsonStream, true)
 		if err != nil {
@@ -160,7 +160,7 @@ func (e *evaluator) run(l *lexer, keys []*key) chan []interface{} {
 	return e.results
 }
 
-func traverseUntilEnd(jsonStream <-chan *Item, open, end int) error {
+func traverseUntilEnd(jsonStream <-chan Item, open, end int) error {
 	jsonStack := &stack{}
 	jsonStack.Push(open)
 
@@ -184,7 +184,7 @@ looper:
 	return nil
 }
 
-func traverseValueTree(jsonStream <-chan *Item, capture bool) (string, error) {
+func traverseValueTree(jsonStream <-chan Item, capture bool) (string, error) {
 	jsonStack := &stack{}
 	buffer := bytes.NewBufferString("")
 
