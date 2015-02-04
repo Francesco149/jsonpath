@@ -10,7 +10,8 @@ type slexer struct {
 	pos            Pos    // current position in the input
 	width          Pos    // width of last rune read from input
 	currentStateFn stateFn
-	generatedItem  *Item
+	emittedItem    Item
+	hasItem        bool
 	state          interface{}
 }
 
@@ -44,7 +45,8 @@ func (l *slexer) emit(t int) {
 	i := Item{t, l.start, l.input[l.start:l.pos]}
 	l.start = l.pos
 
-	l.generatedItem = &i
+	l.emittedItem = i
+	l.hasItem = true
 }
 
 func (l *slexer) ignore() {
@@ -59,9 +61,9 @@ func (l *slexer) next() (Item, bool) {
 
 		l.currentStateFn = l.currentStateFn(l, l.state)
 
-		if l.generatedItem != nil {
-			v := *l.generatedItem
-			l.generatedItem = nil
+		if l.hasItem {
+			v := l.emittedItem
+			l.hasItem = false
 			return v, true
 		}
 	}
@@ -75,6 +77,7 @@ func (l *slexer) setState(val interface{}) {
 func (l *slexer) errorf(format string, args ...interface{}) stateFn {
 	i := Item{jsonError, l.start, fmt.Sprintf(format, args...)}
 	l.start = l.pos
-	l.generatedItem = &i
+	l.emittedItem = i
+	l.hasItem = true
 	return nil
 }

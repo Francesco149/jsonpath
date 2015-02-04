@@ -12,7 +12,8 @@ type rlexer struct {
 	lexeme         bytes.Buffer
 	width          Pos
 	currentStateFn stateFn
-	generatedItem  *Item
+	emittedItem    Item
+	hasItem        bool
 	state          interface{}
 }
 
@@ -56,7 +57,8 @@ func (l *rlexer) peek() int {
 func (l *rlexer) emit(t int) {
 	i := Item{t, l.width + 1, l.lexeme.String()}
 	l.lexeme.Truncate(0)
-	l.generatedItem = &i
+	l.emittedItem = i
+	l.hasItem = true
 }
 
 func (l *rlexer) ignore() {
@@ -71,9 +73,9 @@ func (l *rlexer) next() (Item, bool) {
 
 		l.currentStateFn = l.currentStateFn(l, l.state)
 
-		if l.generatedItem != nil {
-			v := *l.generatedItem
-			l.generatedItem = nil
+		if l.hasItem {
+			v := l.emittedItem
+			l.hasItem = false
 			return v, true
 		}
 	}
@@ -87,6 +89,7 @@ func (l *rlexer) setState(val interface{}) {
 func (l *rlexer) errorf(format string, args ...interface{}) stateFn {
 	i := Item{jsonError, l.width + 1, fmt.Sprintf(format, args...)}
 	l.lexeme.Truncate(0)
-	l.generatedItem = &i
+	l.emittedItem = i
+	l.hasItem = true
 	return nil
 }
