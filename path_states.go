@@ -32,8 +32,8 @@ var pathTokenNames = map[int]string{
 
 var PATH = lexPathRoot
 
-func lexPathRoot(l *lexer) stateFn {
-	l.ignoreSpaceRun()
+func lexPathRoot(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
 	cur := l.peek()
 	if cur != '$' {
 		return l.errorf("Expected $ at start of path instead of  '%#U'", cur)
@@ -45,7 +45,7 @@ func lexPathRoot(l *lexer) stateFn {
 	return lexAfterElement
 }
 
-func lexAfterElement(l *lexer) stateFn {
+func lexAfterElement(l lexer, state interface{}) stateFn {
 	cur := l.peek()
 	switch {
 	case cur == '.':
@@ -62,7 +62,7 @@ func lexAfterElement(l *lexer) stateFn {
 	return nil
 }
 
-func lexKey(l *lexer) stateFn {
+func lexKey(l lexer, state interface{}) stateFn {
 	// TODO: Support globbing of keys
 	inQuotes := false
 	cur := l.peek()
@@ -73,7 +73,7 @@ func lexKey(l *lexer) stateFn {
 	}
 
 	if cur == '"' {
-		l.skip()
+		l.ignore()
 		inQuotes = true
 	}
 
@@ -98,13 +98,13 @@ looper:
 		if cur != '"' {
 			return l.errorf("Expected \" instead of  '%#U'", cur)
 		} else {
-			l.skip()
+			l.ignore()
 		}
 	}
 	return lexAfterElement
 }
 
-func lexPathArray(l *lexer) stateFn {
+func lexPathArray(l lexer, state interface{}) stateFn {
 	cur := l.peek()
 	if cur != '[' {
 		return l.errorf("Expected [ at start of array instead of  '%#U'", cur)
@@ -117,7 +117,7 @@ func lexPathArray(l *lexer) stateFn {
 	cur = l.peek()
 	switch {
 	case isNumericStart(cur):
-		l.acceptWhere(isDigit)
+		takeWhere(l, isDigit)
 		l.emit(pathIndex)
 	case cur == '*':
 		l.take()

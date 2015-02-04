@@ -37,149 +37,158 @@ var jsonTokenNames = map[int]string{
 var JSON = lexJsonRoot
 
 // TODO: Handle array at root as well as object
-func lexJsonRoot(l *lexer) stateFn {
-	if err := lexJsonObject; err != nil {
-		return err
+func lexJsonRoot(l lexer, state interface{}) stateFn {
+	l.setState(newStack())
+	ignoreSpaceRun(l)
+	cur := l.peek()
+	var next stateFn
+	switch cur {
+	case '{':
+		next = stateJsonObjectOpen
+	case '[':
+		next = stateJsonArrayOpen
+	default:
+		next = l.errorf("Expected '{' or '[' at root of JSON instead of '%c' %#U", cur, cur)
 	}
-	if l.stack.Peek() != nil {
-		return l.errorf("Missing end bracket or brace")
-	}
-	return nil
+	return next
 }
 
-func lexJsonObject(l *lexer) stateFn {
-	if l.stopped {
-		return l.errorf(ErrorEarlyTermination)
-	}
-	l.ignoreSpaceRun()
+func stateJsonObjectOpen(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
 	cur := l.peek()
 	if cur != '{' {
 		return l.errorf("Expected '{' as start of object instead of '%c' %#U", cur, cur)
 	}
 	l.take()
 	l.emit(jsonBraceLeft)
+	state.(stack).push(jsonBraceLeft)
 
-	l.ignoreSpaceRun()
-	cur = l.peek()
-	var next stateFn
-	switch cur {
-	case '"':
-		next = takeKeyValuePairs
-	case '}':
-		if top := l.stack.Peek(); top != nil && *top != jsonBraceLeft {
-			next = l.errorf("Received '%#U' but has no matching '{", cur)
-			break
-		}
-		l.take()
-		l.emit(jsonBraceRight)
-		next = nil
-	default:
-		next = l.errorf("Expected \" or } inside an object instead of '%c' %#U", cur, cur)
-	}
-	return next
+	return stateJsonObject
 }
 
-func lexJsonMatchingBracket(l *lexer, t int) bool {
-	top := l.stack.Peek()
-	if top == nil {
-		return false
-	}
-	openToken := *top
-	if t == jsonBracketRight {
-		return openToken == jsonBracketLeft
-	} else if t == jsonBraceRight {
-		return openToken == jsonBraceLeft
-	}
-	return false
-}
-
-func takeKeyValuePairs(l *lexer) stateFn {
-	for {
-		if l.stopped {
-			return l.errorf(ErrorEarlyTermination)
-		}
-
-		if err := takeKeyAndColon(l); err != nil {
-			return err
-		}
-		if err := takeValue(l); err != nil {
-			return err
-		}
-		l.ignoreSpaceRun()
-		cur := l.peek()
-		switch cur {
-		case ',':
-			l.take()
-			l.emit(jsonComma)
-			continue
-		case '}':
-			if top := l.stack.Peek(); top != nil && *top != jsonBraceLeft {
-				return l.errorf("Received '%#U' but has no matching '{", cur)
-			}
-			l.take()
-			l.emit(jsonBraceRight)
-			return nil
-		default:
-			return l.errorf("Unexpected character after value: '%c' %#U", cur, cur)
-		}
-	}
-}
-
-func lexJsonArray(l *lexer) stateFn {
-	l.ignoreSpaceRun()
+func stateJsonArrayOpen(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
 	cur := l.peek()
 	if cur != '[' {
 		return l.errorf("Expected '[' as start of array instead of '%c' %#U", cur, cur)
 	}
 	l.take()
 	l.emit(jsonBracketLeft)
-	l.ignoreSpaceRun()
-	cur = l.peek()
-	// var next stateFn
+	state.(stack).push(jsonBracketLeft)
+
+	return stateJsonArray
+}
+
+func stateJsonObject(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
+	var next stateFn
+	cur := l.peek()
 	switch cur {
+	case '}':
+		if top := state.(stack).peek(); top != nil && top.(int) != jsonBraceLeft {
+			next = l.errorf("Received %#U but has no matching '{'", cur)
+			break
+		}
+		l.take()
+		l.emit(jsonBraceRight)
+		state.(stack).pop()
+		next = stateJsonAfterValue
+	default:
+		next = stateJsonKey
+	}
+	return next
+}
+
+func stateJsonArray(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
+	var next stateFn
+	cur := l.peek()
+	switch cur {
+	case ']':
+		if top := state.(stack).peek(); top != nil && top.(int) != jsonBracketLeft {
+			next = l.errorf("Received %#U but has no matching '['", cur)
+			break
+		}
+		l.take()
+		l.emit(jsonBracketRight)
+		state.(stack).pop()
+		next = stateJsonAfterValue
+	default:
+		next = stateJsonValue
+	}
+	return next
+}
+
+func stateJsonAfterValue(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
+	cur := l.peek()
+	top := state.(stack).peek()
+	empty := noValue
+	val := empty
+	if top != nil {
+		val = top.(int)
+	}
+
+	switch cur {
+	case ',':
+		l.take()
+		l.emit(jsonComma)
+		switch int(val) {
+		case jsonBraceLeft:
+			return stateJsonKey
+		case jsonBracketLeft:
+			return stateJsonValue
+		default:
+			return l.errorf("Unexpected character in lexer stack: '%c' %#U", cur, cur)
+		}
+	case '}':
+		l.take()
+		l.emit(jsonBraceRight)
+		state.(stack).pop()
+		switch int(val) {
+		case jsonBraceLeft:
+			return stateJsonAfterValue
+		case jsonBracketLeft:
+			return l.errorf("Unexpected } in array")
+		case empty:
+			return nil
+		}
 	case ']':
 		l.take()
 		l.emit(jsonBracketRight)
-	default:
-	valueLoop:
-		for {
-			if l.stopped {
-				return l.errorf(ErrorEarlyTermination)
-			}
-
-			if err := takeValue(l); err != nil {
-				return err
-			}
-
-			l.ignoreSpaceRun()
-			cur = l.peek()
-			switch cur {
-			case ',':
-				l.take()
-				l.emit(jsonComma)
-			case ']':
-				l.take()
-				l.emit(jsonBracketRight)
-				break valueLoop
-			default:
-				return l.errorf("Unexpected character after array value: '%c' %#U", cur, cur)
-			}
+		state.(stack).pop()
+		switch int(val) {
+		case jsonBraceLeft:
+			return l.errorf("Unexpected ] in object")
+		case jsonBracketLeft:
+			return stateJsonAfterValue
+		case empty:
+			return nil
 		}
+	case eof:
+		if state.(stack).len() == 0 {
+			return nil
+		} else {
+			return l.errorf("Unexpected EOF instead of value")
+		}
+	default:
+		return l.errorf("Unexpected character after json value token: '%c' %#U", cur, cur)
 	}
 	return nil
 }
 
-func takeKeyAndColon(l *lexer) stateFn {
-	if l.stopped {
-		return l.errorf(ErrorEarlyTermination)
-	}
-
-	l.ignoreSpaceRun()
+func stateJsonKey(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
 	if err := takeString(l); err != nil {
-		return err
+		return l.errorf(err.Error())
 	}
 	l.emit(jsonKey)
-	l.ignoreSpaceRun()
+
+	return stateJsonColon
+}
+
+func stateJsonColon(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
 
 	cur := l.peek()
 	if cur != ':' {
@@ -187,144 +196,68 @@ func takeKeyAndColon(l *lexer) stateFn {
 	}
 	l.take()
 	l.emit(jsonColon)
-	return nil
+
+	return stateJsonValue
 }
 
-func takeValue(l *lexer) stateFn {
-	if l.stopped {
-		return l.errorf(ErrorEarlyTermination)
-	}
-
-	l.ignoreSpaceRun()
+func stateJsonValue(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
 	cur := l.peek()
-	var err stateFn
 
 	switch cur {
 	case eof:
 		return l.errorf("Unexpected EOF instead of value")
 	case '"':
-		if err = takeString(l); err != nil {
-			return err
-		}
-		l.emit(jsonString)
+		return stateJsonString
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		if err := takeNumeric(l); err != nil {
-			return err
-		}
-		l.emit(jsonNumber)
-	case 't':
-		if success := l.acceptString("true"); !success {
-			return l.errorf("Could not parse value as 'true'")
-		}
-		l.emit(jsonBool)
-	case 'f':
-		if success := l.acceptString("false"); !success {
-			return l.errorf("Could not parse value as 'false'")
-		}
-		l.emit(jsonBool)
+		return stateJsonNumber
+	case 't', 'f':
+		return stateJsonBool
 	case 'n':
-		if success := l.acceptString("null"); !success {
-			return l.errorf("Could not parse value as 'null'")
-		}
-		l.emit(jsonNull)
+		return stateJsonNull
 	case '{':
-		for state := lexJsonObject; state != nil; {
-			state = state(l)
-		}
+		return stateJsonObjectOpen
 	case '[':
-		for state := lexJsonArray; state != nil; {
-			state = state(l)
-		}
+		return stateJsonArrayOpen
 	default:
 		return l.errorf("Unexpected character as start of value: '%c' %#U", cur, cur)
 	}
-
-	return nil
 }
 
-func takeNumeric(l *lexer) stateFn {
-	// TODO: Handle digit 0 separately
-	cur := l.peek()
-	switch {
-	case cur == '-':
-		l.take()
-		cur = l.peek()
-		if !isDigit(cur) {
-			return l.errorf("Expected digit after dash instead of '%c' %#U", cur, cur)
-		}
-		l.acceptWhere(isDigit)
-	case isDigit(cur):
-		l.take()
-		l.acceptWhere(isDigit)
-	default:
-		return l.errorf("Expected digit or dash instead of '%c' %#U", cur, cur)
+func stateJsonString(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
+	if err := takeString(l); err != nil {
+		return l.errorf(err.Error())
 	}
-
-	takeExponent := func(l *lexer) stateFn {
-		r := l.peek()
-		if r != 'e' && r != 'E' {
-			return nil
-		}
-		l.take()
-		r = l.peek()
-		switch {
-		case r == '+', r == '-':
-			l.take()
-			if r = l.peek(); !isDigit(r) {
-				return l.errorf("Expected digit after numeric sign instead of '%c' %#U", cur, cur)
-			}
-			l.acceptWhere(isDigit)
-		case isDigit(r):
-			l.acceptWhere(isDigit)
-		default:
-			return l.errorf("Expected digit after 'e' instead of '%c' %#U", cur, cur)
-		}
-		return nil
-	}
-
-	// fraction or exponent
-	cur = l.peek()
-	switch cur {
-	case '.':
-		l.take()
-		cur = l.peek()
-		if !isDigit(cur) {
-			return l.errorf("Expected digit after '.' instead of '%c' %#U", cur, cur)
-		}
-		l.acceptWhere(isDigit)
-		if err := takeExponent(l); err != nil {
-			return err
-		}
-	case 'e', 'E':
-		if err := takeExponent(l); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	l.emit(jsonString)
+	return stateJsonAfterValue
 }
 
-func takeString(l *lexer) stateFn {
-	l.ignoreSpaceRun()
-	cur := l.peek()
-	if cur != '"' {
-		return l.errorf("Expected \" as start of string instead of '%c' %#U", cur, cur)
+func stateJsonNumber(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
+	if err := takeNumeric(l); err != nil {
+		return l.errorf(err.Error())
 	}
-	l.take()
+	l.emit(jsonNumber)
+	return stateJsonAfterValue
+}
 
-	var previous int
-	for {
-		cur := l.peek()
-		if cur == eof {
-			return l.errorf("Unexpected EOF in string")
-		} else if cur == '"' && (previous == noValue || previous != '\\') {
-			l.take()
-			break
-		} else {
-			l.take()
+func stateJsonBool(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
+	if !takeExactSequence(l, "true") {
+		if !takeExactSequence(l, "false") {
+			return l.errorf("Could not parse value as 'true' or 'false'")
 		}
-
-		previous = cur
 	}
-	return nil
+	l.emit(jsonBool)
+	return stateJsonAfterValue
+}
+
+func stateJsonNull(l lexer, state interface{}) stateFn {
+	ignoreSpaceRun(l)
+	if !takeExactSequence(l, "null") {
+		return l.errorf("Could not parse value as 'null'")
+	}
+	l.emit(jsonNull)
+	return stateJsonAfterValue
 }

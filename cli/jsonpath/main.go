@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	// "bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -22,17 +22,19 @@ func main() {
 	}
 
 	if filePtr != nil && *filePtr != "" {
-		f, err := os.Open(*filePtr)
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-		reader := bufio.NewReader(f)
-		results := jsonpath.Get(reader, *pathPtr)
-		for l := range results {
-			printLine(l, *valuePtr)
-		}
-		f.Close()
+		fmt.Println("Not implemented")
+		os.Exit(0)
+		// f, err := os.Open(*filePtr)
+		// if err != nil {
+		// 	fmt.Println(err.Error())
+		// 	os.Exit(1)
+		// }
+		// // reader := bufio.NewReader(f)
+		// results := jsonpath.GetByString("{}", *pathPtr)
+		// for l := range results {
+		// 	printLine(l, *valuePtr)
+		// }
+		// f.Close()
 
 	} else if jsonPtr != nil && *jsonPtr != "" {
 		results := jsonpath.GetByString(*jsonPtr, *pathPtr)

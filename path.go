@@ -6,26 +6,29 @@ import (
 	"io"
 	"math"
 	"strconv"
-	"strings"
 )
 
 func GetByString(input, path string) <-chan []interface{} {
-	reader := strings.NewReader(input)
-	return Get(reader, path)
-}
-
-func Get(rs io.Reader, path string) <-chan []interface{} {
 	query, err := parsePath(path)
 	if err != nil {
 		return nil
 	}
 
-	lexer := NewLexer(rs, 10)
-	lexer.Run(JSON)
+	lexer := NewStringLexer(input, JSON)
+	eval := newEvaluator(lexer)
+	return eval.run(query)
+}
 
-	eval := newEvaluator()
+func Get(r io.Reader, path string) <-chan []interface{} {
+	query, err := parsePath(path)
+	if err != nil {
+		return nil
+	}
 
-	return eval.run(lexer, query)
+	lexer := NewReaderLexer(r, JSON)
+	eval := newEvaluator(lexer)
+
+	return eval.run(query)
 }
 
 const (
@@ -84,11 +87,12 @@ func genIndexKey(path <-chan Item) (*key, error) {
 }
 
 func parsePath(path string) ([]*key, error) {
-	reader := strings.NewReader(path)
-	lexer := NewLexer(reader, 10)
-	lexer.Run(PATH)
+	// reader := strings.NewReader(path)
+	// lexer := NewStringLexer(reader, 10)
+	// lexer.Run(PATH)
 
-	return toQuery(lexer.items)
+	return []*key{}, nil
+	// return toQuery(lexer.items)
 }
 
 func toQuery(path <-chan Item) ([]*key, error) {

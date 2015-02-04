@@ -1,65 +1,65 @@
 package jsonpath
 
 import (
-	"testing"
+// "testing"
 
-	"github.com/stretchr/testify/assert"
+// "github.com/stretchr/testify/assert"
 )
 
-func TestPathToQuery(t *testing.T) {
-	as := assert.New(t)
-	items := make(chan Item, 100)
-	items <- Item{typ: pathRoot, val: `$`}
-	items <- Item{typ: pathPeriod, val: `.`}
-	items <- Item{typ: pathKey, val: `aKey`}
-	items <- Item{typ: pathPeriod, val: `.`}
-	items <- Item{typ: pathKey, val: `bKey`}
-	items <- Item{typ: pathBracketLeft, val: `[`}
-	items <- Item{typ: pathIndex, val: `234`}
-	items <- Item{typ: pathBracketRight, val: `]`}
+// func TestPathToQuery(t *testing.T) {
+// 	as := assert.New(t)
+// 	items := make(chan Item, 100)
+// 	items <- Item{typ: pathRoot, val: `$`}
+// 	items <- Item{typ: pathPeriod, val: `.`}
+// 	items <- Item{typ: pathKey, val: `aKey`}
+// 	items <- Item{typ: pathPeriod, val: `.`}
+// 	items <- Item{typ: pathKey, val: `bKey`}
+// 	items <- Item{typ: pathBracketLeft, val: `[`}
+// 	items <- Item{typ: pathIndex, val: `234`}
+// 	items <- Item{typ: pathBracketRight, val: `]`}
 
-	close(items)
+// 	close(items)
 
-	q, err := toQuery(items)
-	as.NoError(err)
-	as.Equal(len(q), 3, "Key count")
-	as.Equal(q[0].typ, keyTypeName)
-	as.Equal(q[0].keys, map[string]struct{}{"aKey": struct{}{}})
-	as.Equal(q[1].typ, keyTypeName)
-	as.Equal(q[1].keys, map[string]struct{}{"bKey": struct{}{}})
-	as.Equal(q[2].typ, keyTypeIndex)
-	as.Equal(q[2].indexStart, 234)
-	as.Equal(q[2].indexEnd, 234)
-}
+// 	q, err := toQuery(items)
+// 	as.NoError(err)
+// 	as.Equal(len(q), 3, "Key count")
+// 	as.Equal(q[0].typ, keyTypeName)
+// 	as.Equal(q[0].keys, map[string]struct{}{"aKey": struct{}{}})
+// 	as.Equal(q[1].typ, keyTypeName)
+// 	as.Equal(q[1].keys, map[string]struct{}{"bKey": struct{}{}})
+// 	as.Equal(q[2].typ, keyTypeIndex)
+// 	as.Equal(q[2].indexStart, 234)
+// 	as.Equal(q[2].indexEnd, 234)
+// }
 
-func TestTraverseValueTree(t *testing.T) {
-	as := assert.New(t)
+// func TestTraverseValueTree(t *testing.T) {
+// 	as := assert.New(t)
 
-	items := make(chan Item, 100)
-	items <- Item{typ: jsonBraceLeft, val: `{`}
-	items <- Item{typ: jsonKey, val: `"aKey"`}
-	items <- Item{typ: jsonColon, val: `:`}
-	items <- Item{typ: jsonBraceLeft, val: `{`}
-	items <- Item{typ: jsonKey, val: `"bKey"`}
-	items <- Item{typ: jsonColon, val: `:`}
-	items <- Item{typ: jsonBracketLeft, val: `[`}
-	items <- Item{typ: jsonNumber, val: `123`}
-	items <- Item{typ: jsonComma, val: `,`}
-	items <- Item{typ: jsonNumber, val: `456`}
-	items <- Item{typ: jsonBracketRight, val: `]`}
-	items <- Item{typ: jsonBraceRight, val: `}`}
-	items <- Item{typ: jsonBraceRight, val: `}`}
+// 	items := make(chan Item, 100)
+// 	items <- Item{typ: jsonBraceLeft, val: `{`}
+// 	items <- Item{typ: jsonKey, val: `"aKey"`}
+// 	items <- Item{typ: jsonColon, val: `:`}
+// 	items <- Item{typ: jsonBraceLeft, val: `{`}
+// 	items <- Item{typ: jsonKey, val: `"bKey"`}
+// 	items <- Item{typ: jsonColon, val: `:`}
+// 	items <- Item{typ: jsonBracketLeft, val: `[`}
+// 	items <- Item{typ: jsonNumber, val: `123`}
+// 	items <- Item{typ: jsonComma, val: `,`}
+// 	items <- Item{typ: jsonNumber, val: `456`}
+// 	items <- Item{typ: jsonBracketRight, val: `]`}
+// 	items <- Item{typ: jsonBraceRight, val: `}`}
+// 	items <- Item{typ: jsonBraceRight, val: `}`}
 
-	// Should not capture these
-	items <- Item{typ: jsonNumber, val: `332`}
-	items <- Item{typ: jsonComma, val: `,`}
-	items <- Item{typ: jsonBraceLeft, val: `{`}
-	close(items)
+// 	// Should not capture these
+// 	items <- Item{typ: jsonNumber, val: `332`}
+// 	items <- Item{typ: jsonComma, val: `,`}
+// 	items <- Item{typ: jsonBraceLeft, val: `{`}
+// 	close(items)
 
-	res, err := traverseValueTree(items, true)
-	as.NoError(err)
-	as.Equal(`{"aKey":{"bKey":[123,456]}}`, res)
-}
+// 	res, err := traverseValueTree(items, true)
+// 	as.NoError(err)
+// 	as.Equal(`{"aKey":{"bKey":[123,456]}}`, res)
+// }
 
 type test struct {
 	json     string
@@ -77,14 +77,14 @@ var tests = []test{
 	test{`{"aKey":{"bKey":{"trash":[0]}, "cKey":[123,456]}}`, `$.aKey.cKey[0]`, [][]interface{}{[]interface{}{"aKey", "cKey", 0, `123`}}},
 }
 
-func TestPathQuery(t *testing.T) {
-	as := assert.New(t)
+// func TestPathQuery(t *testing.T) {
+// 	as := assert.New(t)
 
-	for _, t := range tests {
-		results := GetByString(t.json, t.path)
-		as.Equal(t.expected, toInterfaceArray(results))
-	}
-}
+// 	for _, t := range tests {
+// 		results := GetByString(t.json, t.path)
+// 		as.Equal(t.expected, toInterfaceArray(results))
+// 	}
+// }
 
 func toInterfaceArray(ch <-chan []interface{}) [][]interface{} {
 	vals := make([][]interface{}, 0)

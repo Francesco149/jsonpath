@@ -7,27 +7,33 @@ import (
 )
 
 type evaluator struct {
-	locStack *stack
+	tokenReader
+	locStack stack
 	results  chan []interface{}
 }
 
-func newEvaluator() *evaluator {
+const (
+	AbruptTokenStreamEnd = "Token reader is not sending anymore tokens"
+)
+
+func newEvaluator(tr tokenReader) *evaluator {
 	e := &evaluator{
-		locStack: newStack(),
-		results:  make(chan []interface{}, 100),
+		locStack:    stack(newStack()),
+		tokenReader: tr,
+		results:     make(chan []interface{}, 100),
 	}
 	return e
 }
 
-func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
+func (e *evaluator) perform(keys []*key) error {
 	if len(keys) == 0 {
-		val, err := traverseValueTree(jsonStream, true)
+		val, err := traverseValueTree(&e.tokenReader, true)
 		if err != nil {
 			return err
 		}
-		line := e.locStack.Clone()
-		line.Push(val)
-		e.results <- line.ToArray()
+		line := e.locStack.clone()
+		line.push(val)
+		e.results <- line.toArray()
 		return nil
 	}
 
@@ -39,7 +45,10 @@ func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
 
 	switch k.typ {
 	case keyTypeIndex, keyTypeIndexRange, keyTypeIndexWild:
-		start := <-jsonStream
+		start, ok := e.tokenReader.next()
+		if !ok {
+			return fmt.Errorf(AbruptTokenStreamEnd)
+		}
 		if start.typ != jsonBracketLeft {
 			return nil
 		}
@@ -49,16 +58,19 @@ func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
 	arrayValues:
 		for {
 			if i < k.indexStart || i > k.indexEnd {
-				traverseValueTree(jsonStream, false)
+				traverseValueTree(&e.tokenReader, false)
 			} else if i >= k.indexStart && i <= k.indexEnd {
-				e.locStack.Push(i)
-				if err := e.perform(jsonStream, nextKeys); err != nil {
+				e.locStack.push(i)
+				if err := e.perform(nextKeys); err != nil {
 					fmt.Println(err)
 					return err
 				}
-				e.locStack.Pop()
+				e.locStack.pop()
 			}
-			comma := <-jsonStream
+			comma, ok := e.tokenReader.next()
+			if !ok {
+				return fmt.Errorf(AbruptTokenStreamEnd)
+			}
 			switch comma.typ {
 			case jsonComma:
 				break
@@ -71,12 +83,15 @@ func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
 			i++
 		}
 		if !foundEnd {
-			if err := traverseUntilEnd(jsonStream, jsonBraceLeft, jsonBraceRight); err != nil {
+			if err := traverseUntilEnd(&e.tokenReader, jsonBraceLeft, jsonBraceRight); err != nil {
 				return err
 			}
 		}
 	case keyTypeName, keyTypeNameList, keyTypeNameWild:
-		start := <-jsonStream
+		start, ok := e.tokenReader.next()
+		if !ok {
+			return fmt.Errorf(AbruptTokenStreamEnd)
+		}
 		if start.typ != jsonBraceLeft {
 			return nil
 		}
@@ -85,7 +100,10 @@ func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
 		keysCaptured := 0
 	nameValuePairs:
 		for {
-			name := <-jsonStream
+			name, ok := e.tokenReader.next()
+			if !ok {
+				return fmt.Errorf(AbruptTokenStreamEnd)
+			}
 			if name.typ != jsonKey {
 				return fmt.Errorf("Expected key instead of %s", jsonTokenNames[name.typ])
 			}
@@ -101,7 +119,10 @@ func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
 				capture = true
 			}
 
-			colon := <-jsonStream
+			colon, ok := e.tokenReader.next()
+			if !ok {
+				return fmt.Errorf(AbruptTokenStreamEnd)
+			}
 			if colon.typ != jsonColon {
 				return fmt.Errorf("Expected colon instead of %s", jsonTokenNames[colon.typ])
 			}
@@ -109,16 +130,19 @@ func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
 			if capture {
 				keysCaptured++
 
-				e.locStack.Push(trimmedName)
-				if err := e.perform(jsonStream, nextKeys); err != nil {
+				e.locStack.push(trimmedName)
+				if err := e.perform(nextKeys); err != nil {
 					return err
 				}
-				e.locStack.Pop()
+				e.locStack.pop()
 			} else {
-				traverseValueTree(jsonStream, false)
+				traverseValueTree(&e.tokenReader, false)
 			}
 
-			comma := <-jsonStream
+			comma, ok := e.tokenReader.next()
+			if !ok {
+				return fmt.Errorf(AbruptTokenStreamEnd)
+			}
 			switch comma.typ {
 			case jsonComma:
 				if k.typ != keyTypeNameWild && keysCaptured == len(k.keys) {
@@ -134,7 +158,7 @@ func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
 			}
 		}
 		if !foundEnd {
-			if err := traverseUntilEnd(jsonStream, jsonBraceLeft, jsonBraceRight); err != nil {
+			if err := traverseUntilEnd(&e.tokenReader, jsonBraceLeft, jsonBraceRight); err != nil {
 				return err
 			}
 		}
@@ -142,62 +166,58 @@ func (e *evaluator) perform(jsonStream <-chan Item, keys []*key) error {
 	return nil
 }
 
-func (e *evaluator) run(l *lexer, keys []*key) chan []interface{} {
-	go func() {
-		err := e.perform(l.items, keys)
-		if err != nil {
-			fmt.Println(err)
-		}
+func (e *evaluator) run(keys []*key) chan []interface{} {
+	err := e.perform(keys)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-		l.Kill()
-		for _ = range l.items {
-			// deflate buffer
-		}
-
-		close(e.results)
-	}()
-
+	close(e.results)
 	return e.results
 }
 
-func traverseUntilEnd(jsonStream <-chan Item, open, end int) error {
-	jsonStack := &stack{}
-	jsonStack.Push(open)
+func traverseUntilEnd(tr *tokenReader, open, end int) error {
+	jsonStack := newStack()
+	jsonStack.push(open)
 
 looper:
-	for item := range jsonStream {
+	for {
+		item, ok := (*tr).next()
+		if !ok {
+			return fmt.Errorf(AbruptTokenStreamEnd)
+		}
 		switch item.typ {
 		case jsonBraceLeft, jsonBracketLeft:
-			jsonStack.Push(item.typ)
+			jsonStack.push(item.typ)
 		case jsonBraceRight, jsonBracketRight:
-			jsonStack.Pop()
+			jsonStack.pop()
 		case jsonError:
 			return errors.New(item.val)
 		case jsonEOF:
 			return errors.New("Premature EOF")
 		}
 
-		if jsonStack.Len() == 0 {
+		if jsonStack.len() == 0 {
 			break looper
 		}
 	}
 	return nil
 }
 
-func traverseValueTree(jsonStream <-chan Item, capture bool) (string, error) {
-	jsonStack := &stack{}
+func traverseValueTree(tr *tokenReader, capture bool) (string, error) {
+	jsonStack := newStack()
 	buffer := bytes.NewBufferString("")
 
 	for {
-		item, ok := <-jsonStream
+		item, ok := (*tr).next()
 		if !ok {
-			return "", errors.New("Premature end of stream")
+			return "", fmt.Errorf(AbruptTokenStreamEnd)
 		}
 		switch item.typ {
 		case jsonBraceLeft, jsonBracketLeft:
-			jsonStack.Push(item.typ)
+			jsonStack.push(item.typ)
 		case jsonBraceRight, jsonBracketRight:
-			jsonStack.Pop()
+			jsonStack.pop()
 		case jsonError:
 			return "", errors.New(item.val)
 		case jsonEOF:
@@ -208,7 +228,7 @@ func traverseValueTree(jsonStream <-chan Item, capture bool) (string, error) {
 			buffer.WriteString(item.val)
 		}
 
-		if jsonStack.Len() == 0 {
+		if jsonStack.len() == 0 {
 			break
 		}
 	}

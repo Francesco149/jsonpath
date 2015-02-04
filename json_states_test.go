@@ -1,94 +1,87 @@
 package jsonpath
 
 import (
-	"encoding/json"
-	"strings"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 var jsonTests = []lexTest{
-	{"empty object", `{}`, []*Item{i(jsonBraceLeft), i(jsonBraceRight)}},
-	{"key string", `{"key" :"value"}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
-	{"multiple pairs", `{"key" :"value","key2" :"value"}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonComma), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
-	{"key number", `{"key" : 12.34e+56}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNumber), i(jsonBraceRight)}},
-	{"key true", `{"key" :true}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
-	{"key false", `{"key" :false}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
-	{"key null", `{"key" :null}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNull), i(jsonBraceRight)}},
-	{"key arrayOf number", `{"key" :[23]}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
-	{"key array", `{"key" :[23,"45",67]}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonString), i(jsonComma), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
-	{"key array", `{"key" :["45",{}]}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonString), i(jsonComma), i(jsonBraceLeft), i(jsonBraceRight), i(jsonBracketRight), i(jsonBraceRight)}},
-	{"key nestedObject", `{"key" :{"innerkey":"value"}}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight), i(jsonBraceRight)}},
+	{"empty object", `{}`, []Item{i(jsonBraceLeft), i(jsonBraceRight)}},
+	{"empty array", `[]`, []Item{i(jsonBracketLeft), i(jsonBracketRight)}},
+	{"key string", `{"key" :"value"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
+	{"multiple pairs", `{"key" :"value","key2" :"value"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonComma), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
+	{"key number", `{"key" : 12.34e+56}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNumber), i(jsonBraceRight)}},
+	{"key true", `{"key" :true}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
+	{"key false", `{"key" :false}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
+	{"key null", `{"key" :null}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNull), i(jsonBraceRight)}},
+	{"key arrayOf number", `{"key" :[23]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
+	{"key array", `{"key" :[23,"45",67]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonString), i(jsonComma), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
+	{"key array", `{"key" :["45",{}]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonString), i(jsonComma), i(jsonBraceLeft), i(jsonBraceRight), i(jsonBracketRight), i(jsonBraceRight)}},
+	{"key nestedObject", `{"key" :{"innerkey":"value"}}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight), i(jsonBraceRight)}},
+	{"key nestedArray", `[1,["a","b"]]`, []Item{i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonBracketLeft), i(jsonString), i(jsonComma), i(jsonString), i(jsonBracketRight), i(jsonBracketRight)}},
 }
 
 func TestValidJson(t *testing.T) {
 	as := assert.New(t)
 
 	for _, test := range jsonTests {
-		reader := strings.NewReader(test.input)
-		lexer := NewLexer(reader, 0)
-		lexer.Run(JSON)
-		items := itemsToArray(lexer.items)
+		lexer := NewStringLexer(test.input, JSON)
+		items := readerToArray(lexer)
 
-		as.True(typeIsEqual(items, test.items, true), "Testing of %s: got\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
+		as.True(typeIsEqual(items, test.items, true), "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
 	}
 }
 
 var errorJsonTests = []lexTest{
-	{"Missing end brace", `{`, []*Item{i(jsonBraceLeft), i(jsonError)}},
-	{"Missing start brace", `}`, []*Item{i(jsonError)}},
-	{"Missing key start quote", `{key":true}`, []*Item{i(jsonBraceLeft), i(jsonError)}},
-	{"Missing key end quote", `{"key:true}`, []*Item{i(jsonBraceLeft), i(jsonError)}},
-	{"Missing colon", `{"key"true}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonError)}},
-	{"Missing value", `{"key":}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonError)}},
-	{"Missing string start quote", `{"key":test"}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonError)}},
-	{"Missing embedded array bracket", `{"key":[}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonError)}},
-	{"Missing values in array", `{"key":[,]`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonError)}},
-	{"Missing value after comma", `{"key":[343,]}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonError)}},
-	{"Missing comma in array", `{"key":[234 424]}`, []*Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonError)}},
+	{"Missing end brace", `{`, []Item{i(jsonBraceLeft), i(jsonError)}},
+	{"Missing start brace", `}`, []Item{i(jsonError)}},
+	{"Missing key start quote", `{key":true}`, []Item{i(jsonBraceLeft), i(jsonError)}},
+	{"Missing key end quote", `{"key:true}`, []Item{i(jsonBraceLeft), i(jsonError)}},
+	{"Missing colon", `{"key"true}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonError)}},
+	{"Missing value", `{"key":}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonError)}},
+	{"Missing string start quote", `{"key":test"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonError)}},
+	{"Missing embedded array bracket", `{"key":[}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonError)}},
+	{"Missing values in array", `{"key":[,]`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonError)}},
+	{"Missing value after comma", `{"key":[343,]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonError)}},
+	{"Missing comma in array", `{"key":[234 424]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonError)}},
 }
 
 func TestMalformedJson(t *testing.T) {
 	as := assert.New(t)
 
 	for _, test := range errorJsonTests {
-		reader := strings.NewReader(test.input)
-		lexer := NewLexer(reader, 0)
-		lexer.Run(JSON)
-		items := itemsToArray(lexer.items)
+		lexer := NewStringLexer(test.input, JSON)
+		items := readerToArray(lexer)
 
-		as.True(typeIsEqual(items, test.items, false), "Testing of %s: got\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
+		as.True(typeIsEqual(items, test.items, false), "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
 	}
 }
 
-func TestEarlyTerminationForJSON(t *testing.T) {
-	as := assert.New(t)
-	wg := sync.WaitGroup{}
-	bufferSize := 3
+// func TestEarlyTerminationForJSON(t *testing.T) {
+// 	as := assert.New(t)
+// 	wg := sync.WaitGroup{}
 
-	reader := strings.NewReader(`{"key":"value", "key2":{"ikey":3}, "key3":[1,2,3,4]}`)
-	lexer := NewLexer(reader, bufferSize)
-	wg.Add(1)
-	go func() {
-		lexer.Run(JSON)
-		wg.Done()
-	}()
+// 	lexer := NewStringLexer(`{"key":"value", "key2":{"ikey":3}, "key3":[1,2,3,4]}`)
+// 	wg.Add(1)
+// 	go func() {
+// 		lexer.Run(JSON)
+// 		wg.Done()
+// 	}()
 
-	// Pop a few items
-	<-lexer.items
-	<-lexer.items
-	// Kill command
-	close(lexer.kill)
+// 	// Pop a few items
+// 	<-lexer.items
+// 	<-lexer.items
+// 	// Kill command
+// 	close(lexer.kill)
 
-	wg.Wait()
-	remainingItems := itemsToArray(lexer.items)
-	// TODO: Occasionally fails - rethink this
-	_ = as
-	_ = remainingItems
-	// as.True(len(remainingItems) <= bufferSize, "Count of remaining items should be less than buffer size: %d", len(remainingItems))
-}
+// 	wg.Wait()
+// 	remainingItems := readerToArray(lexer.items)
+// 	// TODO: Occasionally fails - rethink this
+// 	_ = as
+// 	_ = remainingItems
+// 	// as.True(len(remainingItems) <= bufferSize, "Count of remaining items should be less than buffer size: %d", len(remainingItems))
+// }
 
 var jsonExamples = []string{
 	`{"items":[
@@ -162,31 +155,12 @@ var jsonExamples = []string{
 func TestValidRealJson(t *testing.T) {
 	as := assert.New(t)
 	for _, json := range jsonExamples {
-		reader := strings.NewReader(json)
-		lexer := NewLexer(reader, 0)
-		lexer.Run(JSON)
+		lexer := NewStringLexer(json, JSON)
+		items := readerToArray(lexer)
 
-		for i := range lexer.items {
+		for _, i := range items {
 			as.False(i.typ == jsonError, "Found error while parsing: %q", i.val)
 		}
-	}
-}
-
-func BenchmarkLexerJSON(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		reader := strings.NewReader(jsonExamples[2])
-		lexer := NewLexer(reader, 100)
-		lexer.Run(JSON)
-
-		for _ = range lexer.items {
-		}
-	}
-}
-
-func BenchmarkUnmarshalJSON(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		var data interface{}
-		json.Unmarshal([]byte(jsonExamples[2]), &data)
 	}
 }
 
