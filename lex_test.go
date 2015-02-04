@@ -84,8 +84,8 @@ func BenchmarkReaderLexerJSON(b *testing.B) {
 
 func BenchmarkStdLibDecodeJSON(b *testing.B) {
 	reader := strings.NewReader(testJson)
+	dec := json.NewDecoder(reader)
 	for n := 0; n < b.N; n++ {
-		dec := json.NewDecoder(reader)
 		var x struct{}
 		dec.Decode(&x)
 	}
@@ -121,8 +121,8 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 // func BenchmarkStdLibDecodeJSONLarge(b *testing.B) {
 // 	input, _ := ioutil.ReadFile("/Users/nicksardo/large.json")
 // 	reader := strings.NewReader(string(input))
+// 	dec := json.NewDecoder(reader)
 // 	for n := 0; n < b.N; n++ {
-// 		dec := json.NewDecoder(reader)
 // 		var x struct{}
 // 		dec.Decode(&x)
 // 	}
