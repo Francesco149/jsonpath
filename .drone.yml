@@ -15,6 +15,7 @@ script:
     #################################################################
     # Commands to execute CI build
     #################################################################
+  - go get -t ./...
    # Test all unit tests with race flag
   - go test -v -race ./...
    # Run benchmarks
