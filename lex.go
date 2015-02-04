@@ -41,8 +41,7 @@ type lexer struct {
 	lexeme   bytes.Buffer
 	width    Pos // width of all items until now
 	stack    *intstack
-	lastItem *Item
-	items    chan *Item
+	items    chan Item
 	kill     chan struct{}
 	stopped  bool
 	err      error
@@ -50,7 +49,7 @@ type lexer struct {
 
 func NewLexer(rr io.Reader, bufferSize int) *lexer {
 	l := lexer{
-		items:    make(chan *Item, bufferSize),
+		items:    make(chan Item, bufferSize),
 		kill:     make(chan struct{}),
 		input:    rr,
 		stack:    newIntStack(),
@@ -110,10 +109,10 @@ func (l *lexer) emit(t int) {
 		l.stack.Pop()
 	}
 
-	i := &Item{t, l.width + 1, l.lexeme.String()}
+	i := Item{t, l.width + 1, l.lexeme.String()}
 	select {
 	case l.items <- i:
-		l.lastItem = i
+		// Do nothing
 	case <-l.kill:
 		close(l.items)
 		l.stopped = true
@@ -167,12 +166,11 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 		return nil
 	}
 
-	i := &Item{jsonError, l.width + 1, fmt.Sprintf(format, args...)}
+	i := Item{jsonError, l.width + 1, fmt.Sprintf(format, args...)}
 	select {
 	case l.items <- i:
 		close(l.items)
 		l.stopped = true
-		l.lastItem = i
 	case <-l.kill:
 		close(l.items)
 		l.stopped = true

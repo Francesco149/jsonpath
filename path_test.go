@@ -8,15 +8,15 @@ import (
 
 func TestPathToQuery(t *testing.T) {
 	as := assert.New(t)
-	items := make(chan *Item, 100)
-	items <- &Item{typ: pathRoot, val: `$`}
-	items <- &Item{typ: pathPeriod, val: `.`}
-	items <- &Item{typ: pathKey, val: `aKey`}
-	items <- &Item{typ: pathPeriod, val: `.`}
-	items <- &Item{typ: pathKey, val: `bKey`}
-	items <- &Item{typ: pathBracketLeft, val: `[`}
-	items <- &Item{typ: pathIndex, val: `234`}
-	items <- &Item{typ: pathBracketRight, val: `]`}
+	items := make(chan Item, 100)
+	items <- Item{typ: pathRoot, val: `$`}
+	items <- Item{typ: pathPeriod, val: `.`}
+	items <- Item{typ: pathKey, val: `aKey`}
+	items <- Item{typ: pathPeriod, val: `.`}
+	items <- Item{typ: pathKey, val: `bKey`}
+	items <- Item{typ: pathBracketLeft, val: `[`}
+	items <- Item{typ: pathIndex, val: `234`}
+	items <- Item{typ: pathBracketRight, val: `]`}
 
 	close(items)
 
@@ -35,25 +35,25 @@ func TestPathToQuery(t *testing.T) {
 func TestTraverseValueTree(t *testing.T) {
 	as := assert.New(t)
 
-	items := make(chan *Item, 100)
-	items <- &Item{typ: jsonBraceLeft, val: `{`}
-	items <- &Item{typ: jsonKey, val: `"aKey"`}
-	items <- &Item{typ: jsonColon, val: `:`}
-	items <- &Item{typ: jsonBraceLeft, val: `{`}
-	items <- &Item{typ: jsonKey, val: `"bKey"`}
-	items <- &Item{typ: jsonColon, val: `:`}
-	items <- &Item{typ: jsonBracketLeft, val: `[`}
-	items <- &Item{typ: jsonNumber, val: `123`}
-	items <- &Item{typ: jsonComma, val: `,`}
-	items <- &Item{typ: jsonNumber, val: `456`}
-	items <- &Item{typ: jsonBracketRight, val: `]`}
-	items <- &Item{typ: jsonBraceRight, val: `}`}
-	items <- &Item{typ: jsonBraceRight, val: `}`}
+	items := make(chan Item, 100)
+	items <- Item{typ: jsonBraceLeft, val: `{`}
+	items <- Item{typ: jsonKey, val: `"aKey"`}
+	items <- Item{typ: jsonColon, val: `:`}
+	items <- Item{typ: jsonBraceLeft, val: `{`}
+	items <- Item{typ: jsonKey, val: `"bKey"`}
+	items <- Item{typ: jsonColon, val: `:`}
+	items <- Item{typ: jsonBracketLeft, val: `[`}
+	items <- Item{typ: jsonNumber, val: `123`}
+	items <- Item{typ: jsonComma, val: `,`}
+	items <- Item{typ: jsonNumber, val: `456`}
+	items <- Item{typ: jsonBracketRight, val: `]`}
+	items <- Item{typ: jsonBraceRight, val: `}`}
+	items <- Item{typ: jsonBraceRight, val: `}`}
 
 	// Should not capture these
-	items <- &Item{typ: jsonNumber, val: `332`}
-	items <- &Item{typ: jsonComma, val: `,`}
-	items <- &Item{typ: jsonBraceLeft, val: `{`}
+	items <- Item{typ: jsonNumber, val: `332`}
+	items <- Item{typ: jsonComma, val: `,`}
+	items <- Item{typ: jsonBraceLeft, val: `{`}
 	close(items)
 
 	res, err := traverseValueTree(items, true)

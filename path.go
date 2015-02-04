@@ -46,7 +46,7 @@ type key struct {
 	keys map[string]struct{}
 }
 
-func genIndexKey(path <-chan *Item) (*key, error) {
+func genIndexKey(path <-chan Item) (*key, error) {
 	k := &key{}
 	first := <-path
 	switch first.typ {
@@ -91,7 +91,7 @@ func parsePath(path string) ([]*key, error) {
 	return toQuery(lexer.items)
 }
 
-func toQuery(path <-chan *Item) ([]*key, error) {
+func toQuery(path <-chan Item) ([]*key, error) {
 	query := make([]*key, 0)
 	for p := range path {
 		switch p.typ {
