@@ -92,7 +92,7 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 }
 
 // func BenchmarkStringLexerJSONLarge(b *testing.B) {
-// 	input, _ := ioutil.ReadFile("/Users/nicksardo/large.json")
+// 	input, _ := ioutil.ReadFile("large.test")
 // 	lexer := NewStringLexer(string(input), JSON)
 // 	for n := 0; n < b.N; n++ {
 // 		for {
@@ -105,7 +105,7 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 // }
 
 // func BenchmarkReaderLexerJSONLarge(b *testing.B) {
-// 	input, _ := ioutil.ReadFile("/Users/nicksardo/large.json")
+// 	input, _ := ioutil.ReadFile("large.test")
 // 	reader := strings.NewReader(string(input))
 // 	lexer := NewReaderLexer(reader, JSON)
 // 	for n := 0; n < b.N; n++ {
@@ -119,7 +119,7 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 // }
 
 // func BenchmarkStdLibDecodeJSONLarge(b *testing.B) {
-// 	input, _ := ioutil.ReadFile("/Users/nicksardo/large.json")
+// 	input, _ := ioutil.ReadFile("large.test")
 // 	reader := strings.NewReader(string(input))
 // 	dec := json.NewDecoder(reader)
 // 	for n := 0; n < b.N; n++ {
