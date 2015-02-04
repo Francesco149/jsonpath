@@ -17,8 +17,8 @@ script:
     #################################################################
    # Test all unit tests with race flag
   - go test -v -race ./...
-   # Run benchmarks (also tests again)
-  - go test -bench=. ./...
+   # Run benchmarks
+  - go test -bench=. -test.run XXX ./...
 notify:
   slack:
     webhook_url: 'https://hooks.slack.com/services/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'
