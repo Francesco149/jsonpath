@@ -8,9 +8,9 @@ import (
 
 type rlexer struct {
 	input          io.Reader
+	pos            Pos
 	nextByte       int
 	lexeme         bytes.Buffer
-	width          Pos
 	initialState   stateFn
 	currentStateFn stateFn
 	emittedItem    Item
@@ -57,13 +57,15 @@ func (l *rlexer) peek() int {
 }
 
 func (l *rlexer) emit(t int) {
-	i := Item{t, l.width + 1, l.lexeme.String()}
+	i := Item{t, l.pos, l.lexeme.String()}
+	l.pos += Pos(l.lexeme.Len())
 	l.lexeme.Truncate(0)
 	l.emittedItem = i
 	l.hasItem = true
 }
 
 func (l *rlexer) ignore() {
+	l.pos += Pos(l.lexeme.Len())
 	l.lexeme.Truncate(0)
 }
 
@@ -89,7 +91,7 @@ func (l *rlexer) setState(val interface{}) {
 }
 
 func (l *rlexer) errorf(format string, args ...interface{}) stateFn {
-	i := Item{jsonError, l.width + 1, fmt.Sprintf(format, args...)}
+	i := Item{jsonError, l.pos, fmt.Sprintf(format, args...)}
 	l.lexeme.Truncate(0)
 	l.emittedItem = i
 	l.hasItem = true

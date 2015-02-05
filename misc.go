@@ -132,17 +132,6 @@ func readerToArray(tr tokenReader) []Item {
 	return vals
 }
 
-func toArrayUntil(ch <-chan Item, until func(*Item) bool) []Item {
-	vals := make([]Item, 0)
-	for i := range ch {
-		vals = append(vals, i)
-		if until(&i) {
-			break
-		}
-	}
-	return vals
-}
-
 func isDigit(cur int) bool {
 	return (cur >= '0' && cur <= '9')
 }
