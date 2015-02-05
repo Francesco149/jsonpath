@@ -59,6 +59,7 @@ const (
 
 func BenchmarkStringLexerJSON(b *testing.B) {
 	lexer := NewStringLexer(testJson, JSON)
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for {
 			_, ok := lexer.next()
@@ -66,12 +67,14 @@ func BenchmarkStringLexerJSON(b *testing.B) {
 				break
 			}
 		}
+		lexer.reset()
 	}
 }
 
 func BenchmarkReaderLexerJSON(b *testing.B) {
 	reader := strings.NewReader(testJson)
 	lexer := NewReaderLexer(reader, JSON)
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for {
 			_, ok := lexer.next()
@@ -79,12 +82,15 @@ func BenchmarkReaderLexerJSON(b *testing.B) {
 				break
 			}
 		}
+		lexer.reset()
+		reader.Seek(0, 0)
 	}
 }
 
 func BenchmarkStdLibDecodeJSON(b *testing.B) {
 	reader := strings.NewReader(testJson)
 	dec := json.NewDecoder(reader)
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		var x struct{}
 		dec.Decode(&x)
@@ -94,6 +100,7 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 // func BenchmarkStringLexerJSONLarge(b *testing.B) {
 // 	input, _ := ioutil.ReadFile("large.test")
 // 	lexer := NewStringLexer(string(input), JSON)
+// 	b.ResetTimer()
 // 	for n := 0; n < b.N; n++ {
 // 		for {
 // 			_, ok := lexer.next()
@@ -101,6 +108,7 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 // 				break
 // 			}
 // 		}
+// 		lexer.reset()
 // 	}
 // }
 
@@ -108,6 +116,7 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 // 	input, _ := ioutil.ReadFile("large.test")
 // 	reader := strings.NewReader(string(input))
 // 	lexer := NewReaderLexer(reader, JSON)
+// 	b.ResetTimer()
 // 	for n := 0; n < b.N; n++ {
 // 		for {
 // 			_, ok := lexer.next()
@@ -115,6 +124,8 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 // 				break
 // 			}
 // 		}
+// 		lexer.reset()
+// 		reader.Seek(0, 0)
 // 	}
 // }
 
@@ -122,6 +133,7 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 // 	input, _ := ioutil.ReadFile("large.test")
 // 	reader := strings.NewReader(string(input))
 // 	dec := json.NewDecoder(reader)
+// 	b.ResetTimer()
 // 	for n := 0; n < b.N; n++ {
 // 		var x struct{}
 // 		dec.Decode(&x)

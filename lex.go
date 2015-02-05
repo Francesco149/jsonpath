@@ -28,6 +28,7 @@ type lexer interface {
 	next() (Item, bool)
 	errorf(string, ...interface{}) stateFn
 	setState(interface{})
+	reset()
 }
 
 func itemsDescription(items []Item, nameMap map[int]string) []string {

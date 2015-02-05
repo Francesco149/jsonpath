@@ -11,6 +11,7 @@ type rlexer struct {
 	nextByte       int
 	lexeme         bytes.Buffer
 	width          Pos
+	initialState   stateFn
 	currentStateFn stateFn
 	emittedItem    Item
 	hasItem        bool
@@ -21,6 +22,7 @@ func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
 	l := rlexer{
 		input:          rr,
 		nextByte:       noValue,
+		initialState:   initial,
 		currentStateFn: initial,
 	}
 	return &l
@@ -92,4 +94,11 @@ func (l *rlexer) errorf(format string, args ...interface{}) stateFn {
 	l.emittedItem = i
 	l.hasItem = true
 	return nil
+}
+
+func (l *rlexer) reset() {
+	l.lexeme.Truncate(0)
+	l.hasItem = false
+	l.currentStateFn = l.initialState
+	l.state = nil
 }

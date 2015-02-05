@@ -9,6 +9,7 @@ type slexer struct {
 	start          Pos    // start position of this Item.
 	pos            Pos    // current position in the input
 	width          Pos    // width of last rune read from input
+	initialState   stateFn
 	currentStateFn stateFn
 	emittedItem    Item
 	hasItem        bool
@@ -18,6 +19,7 @@ type slexer struct {
 func NewStringLexer(input string, initial stateFn) *slexer {
 	l := &slexer{
 		input:          input,
+		initialState:   initial,
 		currentStateFn: initial,
 	}
 	return l
@@ -80,4 +82,13 @@ func (l *slexer) errorf(format string, args ...interface{}) stateFn {
 	l.emittedItem = i
 	l.hasItem = true
 	return nil
+}
+
+func (l *slexer) reset() {
+	l.start = 0
+	l.pos = 0
+	l.width = 0
+	l.hasItem = false
+	l.currentStateFn = l.initialState
+	l.state = nil
 }
