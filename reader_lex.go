@@ -100,6 +100,8 @@ func (l *rlexer) errorf(format string, args ...interface{}) stateFn {
 
 func (l *rlexer) reset() {
 	l.lexeme.Truncate(0)
+	l.nextByte = noValue
+	l.pos = 0
 	l.hasItem = false
 	l.currentStateFn = l.initialState
 	l.state = nil
