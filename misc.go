@@ -8,15 +8,15 @@ import (
 func takeNumeric(l lexer) error {
 	// TODO: Handle digit 0 separately
 	cur := l.peek()
-	switch {
-	case cur == '-':
+	switch cur {
+	case '-':
 		l.take()
 		cur = l.peek()
 		if !isDigit(cur) {
 			return fmt.Errorf("Expected digit after dash instead of '%c' %#U", cur, cur)
 		}
 		takeWhere(l, isDigit)
-	case isDigit(cur):
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		l.take()
 		takeWhere(l, isDigit)
 	default:
@@ -30,14 +30,14 @@ func takeNumeric(l lexer) error {
 		}
 		l.take()
 		r = l.peek()
-		switch {
-		case r == '+', r == '-':
+		switch r {
+		case '+', '-':
 			l.take()
 			if r = l.peek(); !isDigit(r) {
 				return fmt.Errorf("Expected digit after numeric sign instead of '%c' %#U", cur, cur)
 			}
 			takeWhere(l, isDigit)
-		case isDigit(r):
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			takeWhere(l, isDigit)
 		default:
 			return fmt.Errorf("Expected digit after 'e' instead of '%c' %#U", cur, cur)
