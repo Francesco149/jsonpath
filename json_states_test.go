@@ -8,18 +8,18 @@ import (
 
 var jsonTests = []lexTest{
 	{"empty object", `{}`, []Item{i(jsonBraceLeft), i(jsonBraceRight)}},
-	// {"empty array", `[]`, []Item{i(jsonBracketLeft), i(jsonBracketRight)}},
-	// {"key string", `{"key" :"value"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
-	// {"multiple pairs", `{"key" :"value","key2" :"value"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonComma), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
-	// {"key number", `{"key" : 12.34e+56}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNumber), i(jsonBraceRight)}},
-	// {"key true", `{"key" :true}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
-	// {"key false", `{"key" :false}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
-	// {"key null", `{"key" :null}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNull), i(jsonBraceRight)}},
-	// {"key arrayOf number", `{"key" :[23]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
-	// {"key array", `{"key" :[23,"45",67]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonString), i(jsonComma), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
-	// {"key array", `{"key" :["45",{}]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonString), i(jsonComma), i(jsonBraceLeft), i(jsonBraceRight), i(jsonBracketRight), i(jsonBraceRight)}},
-	// {"key nestedObject", `{"key" :{"innerkey":"value"}}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight), i(jsonBraceRight)}},
-	// {"key nestedArray", `[1,["a","b"]]`, []Item{i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonBracketLeft), i(jsonString), i(jsonComma), i(jsonString), i(jsonBracketRight), i(jsonBracketRight)}},
+	{"empty array", `[]`, []Item{i(jsonBracketLeft), i(jsonBracketRight)}},
+	{"key string", `{"key" :"value"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
+	{"multiple pairs", `{"key" :"value","key2" :"value"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonComma), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
+	{"key number", `{"key" : 12.34e+56}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNumber), i(jsonBraceRight)}},
+	{"key true", `{"key" :true}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
+	{"key false", `{"key" :false}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
+	{"key null", `{"key" :null}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNull), i(jsonBraceRight)}},
+	{"key arrayOf number", `{"key" :[23]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
+	{"key array", `{"key" :[23,"45",67]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonString), i(jsonComma), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
+	{"key array", `{"key" :["45",{}]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonString), i(jsonComma), i(jsonBraceLeft), i(jsonBraceRight), i(jsonBracketRight), i(jsonBraceRight)}},
+	{"key nestedObject", `{"key" :{"innerkey":"value"}}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight), i(jsonBraceRight)}},
+	{"key nestedArray", `[1,["a","b"]]`, []Item{i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonBracketLeft), i(jsonString), i(jsonComma), i(jsonString), i(jsonBracketRight), i(jsonBracketRight)}},
 }
 
 func TestValidJson(t *testing.T) {
