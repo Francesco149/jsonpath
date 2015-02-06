@@ -38,7 +38,6 @@ var JSON = lexJsonRoot
 
 // TODO: Handle array at root as well as object
 func lexJsonRoot(l lexer, state *stack) stateFn {
-	l.setState(newStack())
 	ignoreSpaceRun(l)
 	cur := l.peek()
 	var next stateFn

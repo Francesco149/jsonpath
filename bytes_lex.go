@@ -5,23 +5,17 @@ import (
 )
 
 type blexer struct {
-	input          []byte // the []byte being scanned.
-	start          Pos    // start position of this Item.
-	pos            Pos    // current position in the input
-	width          Pos    // width of last rune read from input
-	initialState   stateFn
-	currentStateFn stateFn
-	emittedItem    *Item
-	hasItem        bool
-	state          *stack
+	lex
+	input []byte // the []byte being scanned.
+	start Pos    // start position of this Item.
+	pos   Pos    // current position in the input
+	width Pos    // width of last rune read from input
 }
 
 func NewBytesLexer(input []byte, initial stateFn) *blexer {
 	l := &blexer{
-		input:          input,
-		initialState:   initial,
-		currentStateFn: initial,
-		emittedItem:    &Item{},
+		lex:   newLex(initial),
+		input: input,
 	}
 	return l
 }
@@ -51,9 +45,9 @@ func (l *blexer) emit(t int) {
 }
 
 func (l *blexer) setItem(typ int, pos Pos, val []byte) {
-	l.emittedItem.typ = typ
-	l.emittedItem.pos = pos
-	l.emittedItem.val = val
+	l.item.typ = typ
+	l.item.pos = pos
+	l.item.val = val
 }
 
 func (l *blexer) ignore() {
@@ -63,21 +57,17 @@ func (l *blexer) ignore() {
 func (l *blexer) next() (*Item, bool) {
 	for {
 		if l.currentStateFn == nil {
-			return l.emittedItem, false
+			return &l.item, false
 		}
 
-		l.currentStateFn = l.currentStateFn(l, l.state)
+		l.currentStateFn = l.currentStateFn(l, &l.stack)
 
 		if l.hasItem {
 			l.hasItem = false
-			return l.emittedItem, true
+			return &l.item, true
 		}
 	}
-	return l.emittedItem, false
-}
-
-func (l *blexer) setState(val *stack) {
-	l.state = val
+	return &l.item, false
 }
 
 func (l *blexer) errorf(format string, args ...interface{}) stateFn {
@@ -91,7 +81,5 @@ func (l *blexer) reset() {
 	l.start = 0
 	l.pos = 0
 	l.width = 0
-	l.hasItem = false
-	l.currentStateFn = l.initialState
-	l.state = nil
+	l.lex = newLex(l.initialState)
 }

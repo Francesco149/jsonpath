@@ -28,8 +28,24 @@ type lexer interface {
 	emit(int)
 	ignore()
 	errorf(string, ...interface{}) stateFn
-	setState(*stack)
 	reset()
+}
+
+type lex struct {
+	initialState   stateFn
+	currentStateFn stateFn
+	item           Item
+	hasItem        bool
+	stack          stack
+}
+
+func newLex(initial stateFn) lex {
+	return lex{
+		initialState:   initial,
+		currentStateFn: initial,
+		item:           Item{},
+		stack:          *newStack(),
+	}
 }
 
 func itemsDescription(items []Item, nameMap map[int]string) []string {
