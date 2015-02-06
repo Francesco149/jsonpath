@@ -1,8 +1,8 @@
 package jsonpath
 
 const (
-	pathEOF = iota
-	pathError
+	pathError = iota
+	pathEOF
 
 	pathRoot
 	pathKey
