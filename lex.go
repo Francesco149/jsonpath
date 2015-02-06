@@ -12,7 +12,7 @@ const (
 type Item struct {
 	typ int
 	pos Pos // The starting position, in bytes, of this Item in the input string.
-	val string
+	val []byte
 }
 
 // Used by evaluator
@@ -44,7 +44,7 @@ func itemDescription(item *Item, nameMap map[int]string) string {
 	var found bool
 	val, found := nameMap[item.typ]
 	if !found {
-		return item.val
+		return string(item.val)
 	}
 	return val
 }

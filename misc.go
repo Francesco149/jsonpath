@@ -127,7 +127,11 @@ func readerToArray(tr tokenReader) []Item {
 		if !ok {
 			break
 		}
-		vals = append(vals, *i)
+		v := *i
+		s := make([]byte, len(v.val))
+		copy(s, v.val)
+		v.val = s
+		vals = append(vals, v)
 	}
 	return vals
 }
@@ -148,7 +152,7 @@ type lexTest struct {
 }
 
 func i(tokenType int) Item {
-	return Item{tokenType, 0, ""}
+	return Item{tokenType, 0, []byte{}}
 }
 
 func typeIsEqual(i1, i2 []Item, printError bool) bool {

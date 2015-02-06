@@ -14,7 +14,7 @@ func GetByString(input, path string) <-chan []interface{} {
 		return nil
 	}
 
-	lexer := NewStringLexer(input, JSON)
+	lexer := NewBytesLexer([]byte(input), JSON)
 	eval := newEvaluator(lexer)
 	return eval.run(query)
 }
@@ -63,7 +63,7 @@ func genIndexKey(path <-chan Item) (*key, error) {
 		}
 
 	case pathIndex:
-		v, err := strconv.ParseInt(first.val, 10, 64)
+		v, err := strconv.ParseInt(string(first.val), 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("Could not parse %q into int64", first.val)
 		}
@@ -88,7 +88,7 @@ func genIndexKey(path <-chan Item) (*key, error) {
 
 func parsePath(path string) ([]*key, error) {
 	// reader := strings.NewReader(path)
-	// lexer := NewStringLexer(reader, 10)
+	// lexer := NewBytesLexer(reader, 10)
 	// lexer.Run(PATH)
 
 	return []*key{}, nil
@@ -113,7 +113,7 @@ func toQuery(path <-chan Item) ([]*key, error) {
 			}
 			query = append(query, k)
 		case pathKey:
-			query = append(query, &key{typ: keyTypeName, keys: map[string]struct{}{p.val: struct{}{}}})
+			query = append(query, &key{typ: keyTypeName, keys: map[string]struct{}{string(p.val): struct{}{}}})
 		case pathWildcard:
 			query = append(query, &key{typ: keyTypeNameWild})
 		}

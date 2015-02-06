@@ -17,7 +17,7 @@ func TestValidPaths(t *testing.T) {
 	as := assert.New(t)
 
 	for _, test := range pathTests {
-		lexer := NewStringLexer(test.input, PATH)
+		lexer := NewBytesLexer([]byte(test.input), PATH)
 		items := readerToArray(lexer)
 
 		as.True(typeIsEqual(items, test.items, true), "Testing of %s: \nactual\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, pathTokenNames), itemsDescription(test.items, pathTokenNames))

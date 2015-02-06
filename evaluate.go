@@ -112,7 +112,7 @@ func (e *evaluator) perform(keys []*key) error {
 			capture := false
 			switch k.typ {
 			case keyTypeName, keyTypeNameList:
-				if _, found := k.keys[trimmedName]; found {
+				if _, found := k.keys[string(trimmedName)]; found {
 					capture = true
 				}
 			case keyTypeNameWild:
@@ -192,7 +192,7 @@ looper:
 		case jsonBraceRight, jsonBracketRight:
 			jsonStack.pop()
 		case jsonError:
-			return errors.New(item.val)
+			return errors.New(string(item.val))
 		case jsonEOF:
 			return errors.New("Premature EOF")
 		}
@@ -219,13 +219,13 @@ func traverseValueTree(tr *tokenReader, capture bool) (string, error) {
 		case jsonBraceRight, jsonBracketRight:
 			jsonStack.pop()
 		case jsonError:
-			return "", errors.New(item.val)
+			return "", errors.New(string(item.val))
 		case jsonEOF:
 			return "", errors.New("Premature EOF")
 		}
 
 		if capture {
-			buffer.WriteString(item.val)
+			buffer.WriteString(string(item.val))
 		}
 
 		if jsonStack.len() == 0 {

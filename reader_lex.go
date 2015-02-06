@@ -8,7 +8,8 @@ import (
 )
 
 type rlexer struct {
-	input          *bufio.Reader
+	bufInput       *bufio.Reader
+	input          io.Reader
 	pos            Pos
 	nextByte       int
 	lexeme         bytes.Buffer
@@ -21,7 +22,8 @@ type rlexer struct {
 
 func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
 	l := rlexer{
-		input:          bufio.NewReader(rr),
+		input:          rr,
+		bufInput:       bufio.NewReader(rr),
 		nextByte:       noValue,
 		initialState:   initial,
 		currentStateFn: initial,
@@ -46,7 +48,7 @@ func (l *rlexer) peek() int {
 		return l.nextByte
 	}
 
-	r, err := l.input.ReadByte()
+	r, err := l.bufInput.ReadByte()
 	if err == io.EOF {
 		l.nextByte = eof
 		return eof
@@ -57,14 +59,13 @@ func (l *rlexer) peek() int {
 }
 
 func (l *rlexer) emit(t int) {
-	l.setItem(t, l.pos, l.lexeme.String())
+	l.setItem(t, l.pos, l.lexeme.Bytes())
 
 	l.pos += Pos(l.lexeme.Len())
-	l.lexeme.Truncate(0)
 	l.hasItem = true
 }
 
-func (l *rlexer) setItem(typ int, pos Pos, val string) {
+func (l *rlexer) setItem(typ int, pos Pos, val []byte) {
 	l.emittedItem.typ = typ
 	l.emittedItem.pos = pos
 	l.emittedItem.val = val
@@ -76,6 +77,7 @@ func (l *rlexer) ignore() {
 }
 
 func (l *rlexer) next() (*Item, bool) {
+	l.lexeme.Truncate(0)
 	for {
 		if l.currentStateFn == nil {
 			return l.emittedItem, false
@@ -96,13 +98,14 @@ func (l *rlexer) setState(val interface{}) {
 }
 
 func (l *rlexer) errorf(format string, args ...interface{}) stateFn {
-	l.setItem(lexError, l.pos, fmt.Sprintf(format, args...))
+	l.setItem(lexError, l.pos, []byte(fmt.Sprintf(format, args...)))
 	l.lexeme.Truncate(0)
 	l.hasItem = true
 	return nil
 }
 
 func (l *rlexer) reset() {
+	l.bufInput.Reset(l.input)
 	l.lexeme.Truncate(0)
 	l.nextByte = noValue
 	l.pos = 0

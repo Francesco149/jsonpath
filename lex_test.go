@@ -1,7 +1,9 @@
 package jsonpath
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -45,7 +47,7 @@ func TestLexerMethods(t *testing.T) {
 	as := assert.New(t)
 	input := `{"key" :"value"}`
 
-	sl := NewStringLexer(input, JSON)
+	sl := NewBytesLexer([]byte(input), JSON)
 	testLexerMethods(sl, as)
 
 	r := strings.NewReader(input)
@@ -59,7 +61,7 @@ const (
 
 func TestStringLexerReset(t *testing.T) {
 	as := assert.New(t)
-	lexer := NewStringLexer(testJson, JSON)
+	lexer := NewBytesLexer([]byte(testJson), JSON)
 	sitems := readerToArray(lexer)
 
 	lexer.reset()
@@ -70,7 +72,7 @@ func TestStringLexerReset(t *testing.T) {
 
 func TestReaderLexerReset(t *testing.T) {
 	as := assert.New(t)
-	reader := strings.NewReader(testJson)
+	reader := bytes.NewReader([]byte(testJson))
 	lexer := NewReaderLexer(reader, JSON)
 	ritems := readerToArray(lexer)
 
@@ -78,12 +80,12 @@ func TestReaderLexerReset(t *testing.T) {
 	reader.Seek(0, 0)
 	ritems2 := readerToArray(lexer)
 
-	as.Equal(ritems, ritems2)
+	as.Equal(ritems, ritems2, "Item slices are not equal")
 }
 
 func TestLexersAgainstEachOther(t *testing.T) {
 	as := assert.New(t)
-	slexer := NewStringLexer(testJson, JSON)
+	slexer := NewBytesLexer([]byte(testJson), JSON)
 	sitems := readerToArray(slexer)
 
 	reader := strings.NewReader(testJson)
@@ -94,7 +96,7 @@ func TestLexersAgainstEachOther(t *testing.T) {
 }
 
 func BenchmarkStringLexerJSON(b *testing.B) {
-	lexer := NewStringLexer(testJson, JSON)
+	lexer := NewBytesLexer([]byte(testJson), JSON)
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for {
@@ -147,59 +149,59 @@ func BenchmarkStdUnmarshalJSON(b *testing.B) {
 	}
 }
 
-// func BenchmarkStringLexerJSONLarge(b *testing.B) {
-// 	input, _ := ioutil.ReadFile("large.test")
-// 	lexer := NewStringLexer(string(input), JSON)
-// 	b.ResetTimer()
-// 	for n := 0; n < b.N; n++ {
-// 		for {
-// 			_, ok := lexer.next()
-// 			if !ok {
-// 				break
-// 			}
-// 		}
-// 		lexer.reset()
-// 	}
-// }
+func BenchmarkStringLexerJSONLarge(b *testing.B) {
+	input, _ := ioutil.ReadFile("large.test")
+	lexer := NewBytesLexer(input, JSON)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		for {
+			_, ok := lexer.next()
+			if !ok {
+				break
+			}
+		}
+		lexer.reset()
+	}
+}
 
-// func BenchmarkReaderLexerJSONLarge(b *testing.B) {
-// 	input, _ := ioutil.ReadFile("large.test")
-// 	reader := strings.NewReader(string(input))
-// 	lexer := NewReaderLexer(reader, JSON)
-// 	b.ResetTimer()
-// 	for n := 0; n < b.N; n++ {
-// 		for {
-// 			_, ok := lexer.next()
-// 			if !ok {
-// 				break
-// 			}
-// 		}
-// 		lexer.reset()
-// 		reader.Seek(0, 0)
-// 	}
-// }
+func BenchmarkReaderLexerJSONLarge(b *testing.B) {
+	input, _ := ioutil.ReadFile("large.test")
+	reader := bytes.NewReader(input)
+	lexer := NewReaderLexer(reader, JSON)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		for {
+			_, ok := lexer.next()
+			if !ok {
+				break
+			}
+		}
+		lexer.reset()
+		reader.Seek(0, 0)
+	}
+}
 
-// func BenchmarkStdLibDecodeJSONLarge(b *testing.B) {
-// 	input, _ := ioutil.ReadFile("large.test")
-// 	reader := strings.NewReader(string(input))
-// 	dec := json.NewDecoder(reader)
-// 	b.ResetTimer()
-// 	for n := 0; n < b.N; n++ {
-// 		var x struct{}
-// 		dec.Decode(&x)
-// 		reader.Seek(0, 0)
-// 	}
-// }
+func BenchmarkStdLibDecodeJSONLarge(b *testing.B) {
+	input, _ := ioutil.ReadFile("large.test")
+	reader := bytes.NewReader(input)
+	dec := json.NewDecoder(reader)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		var x struct{}
+		dec.Decode(&x)
+		reader.Seek(0, 0)
+	}
+}
 
-// // Not comparable to previous benchmarks
-// func BenchmarkStdUnmarshalJSONLarge(b *testing.B) {
-// 	input, _ := ioutil.ReadFile("large.test")
-// 	b.ResetTimer()
-// 	for n := 0; n < b.N; n++ {
-// 		var x interface{}
-// 		err := json.Unmarshal(input, &x)
-// 		if err != nil {
-// 			b.Error(err)
-// 		}
-// 	}
-// }
+// Not comparable to previous benchmarks
+func BenchmarkStdUnmarshalJSONLarge(b *testing.B) {
+	input, _ := ioutil.ReadFile("large.test")
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		var x interface{}
+		err := json.Unmarshal(input, &x)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
