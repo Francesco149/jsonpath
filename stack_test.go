@@ -24,11 +24,9 @@ func TestStackPop(t *testing.T) {
 	s.push(99)
 	as.Equal(s.len(), 1)
 
-	v := s.pop()
-	as.NotNil(v)
-	iv, ok := v.(int)
+	v, ok := s.pop()
 	as.True(ok)
-	as.Equal(99, iv)
+	as.Equal(99, v)
 
 	as.Equal(s.len(), 0)
 }
@@ -38,27 +36,21 @@ func TestStackPeek(t *testing.T) {
 	s := newStack()
 
 	s.push(99)
-	v := s.peek()
-	as.NotNil(v)
-	iv, ok := v.(int)
+	v, ok := s.peek()
 	as.True(ok)
-	as.Equal(99, iv)
+	as.Equal(99, v)
 
 	s.push(54)
-	v = s.peek()
-	as.NotNil(v)
-	iv, ok = v.(int)
+	v, ok = s.peek()
 	as.True(ok)
-	as.Equal(54, iv)
+	as.Equal(54, v)
 
 	s.pop()
-	v = s.peek()
-	as.NotNil(v)
-	iv, ok = v.(int)
+	v, ok = s.peek()
 	as.True(ok)
-	as.Equal(99, iv)
+	as.Equal(99, v)
 
 	s.pop()
-	v = s.peek()
-	as.Nil(v)
+	_, ok = s.peek()
+	as.False(ok)
 }

@@ -1,57 +1,48 @@
 package jsonpath
 
-type stack interface {
-	len() int
-	push(interface{})
-	pop() interface{}
-	peek() interface{}
-	clone() stack
-	toArray() []interface{}
+type stack struct {
+	values []int
 }
 
-type arrayStack struct {
-	values []interface{}
-}
-
-func newStack() *arrayStack {
-	return &arrayStack{
-		values: make([]interface{}, 0),
+func newStack() *stack {
+	return &stack{
+		values: make([]int, 0),
 	}
 }
 
-func (s *arrayStack) len() int {
+func (s *stack) len() int {
 	return len(s.values)
 }
 
-func (s *arrayStack) push(r interface{}) {
+func (s *stack) push(r int) {
 	s.values = append(s.values, r)
 }
 
-func (s *arrayStack) pop() interface{} {
+func (s *stack) pop() (int, bool) {
 	if s.len() == 0 {
-		return nil
+		return 0, false
 	}
-	v := s.peek()
+	v, _ := s.peek()
 	s.values = s.values[:len(s.values)-1]
-	return v
+	return v, true
 }
 
-func (s *arrayStack) peek() interface{} {
+func (s *stack) peek() (int, bool) {
 	if s.len() == 0 {
-		return nil
+		return 0, false
 	}
 	v := s.values[len(s.values)-1]
-	return v
+	return v, true
 }
 
-func (s *arrayStack) clone() stack {
-	d := arrayStack{
-		values: make([]interface{}, s.len()),
+func (s *stack) clone() *stack {
+	d := stack{
+		values: make([]int, s.len()),
 	}
 	copy(d.values, s.values)
-	return stack(&d)
+	return &d
 }
 
-func (s *arrayStack) toArray() []interface{} {
+func (s *stack) toArray() []int {
 	return s.values
 }

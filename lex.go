@@ -1,7 +1,7 @@
 package jsonpath
 
 type Pos int
-type stateFn func(lexer, interface{}) stateFn
+type stateFn func(lexer, *stack) stateFn
 
 const (
 	lexError = 0 // must match jsonError and pathError
@@ -28,7 +28,7 @@ type lexer interface {
 	emit(int)
 	ignore()
 	errorf(string, ...interface{}) stateFn
-	setState(interface{})
+	setState(*stack)
 	reset()
 }
 

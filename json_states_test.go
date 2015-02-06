@@ -163,23 +163,3 @@ func TestValidRealJson(t *testing.T) {
 		}
 	}
 }
-
-// func BenchmarkLexerJSONHuge(b *testing.B) {
-// 	for n := 0; n < b.N; n++ {
-// 		f, _ := os.Open("large.json")
-// 		reader := bufio.NewReader(f)
-// 		lexer := NewLexer(reader, 1000)
-// 		go lexer.Run(JSON)
-// 		for _ = range lexer.items {
-// 		}
-// 		f.Close()
-// 	}
-// }
-
-// func BenchmarkUnmarshalJSONHuge(b *testing.B) {
-// 	for n := 0; n < b.N; n++ {
-// 		var data interface{}
-// 		f, _ := ioutil.ReadFile("large.json")
-// 		json.Unmarshal(f, &data)
-// 	}
-// }

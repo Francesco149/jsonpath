@@ -37,7 +37,7 @@ var jsonTokenNames = map[int]string{
 var JSON = lexJsonRoot
 
 // TODO: Handle array at root as well as object
-func lexJsonRoot(l lexer, state interface{}) stateFn {
+func lexJsonRoot(l lexer, state *stack) stateFn {
 	l.setState(newStack())
 	ignoreSpaceRun(l)
 	cur := l.peek()
@@ -53,7 +53,7 @@ func lexJsonRoot(l lexer, state interface{}) stateFn {
 	return next
 }
 
-func stateJsonObjectOpen(l lexer, state interface{}) stateFn {
+func stateJsonObjectOpen(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	cur := l.peek()
 	if cur != '{' {
@@ -61,12 +61,12 @@ func stateJsonObjectOpen(l lexer, state interface{}) stateFn {
 	}
 	l.take()
 	l.emit(jsonBraceLeft)
-	state.(stack).push(jsonBraceLeft)
+	state.push(jsonBraceLeft)
 
 	return stateJsonObject
 }
 
-func stateJsonArrayOpen(l lexer, state interface{}) stateFn {
+func stateJsonArrayOpen(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	cur := l.peek()
 	if cur != '[' {
@@ -74,24 +74,24 @@ func stateJsonArrayOpen(l lexer, state interface{}) stateFn {
 	}
 	l.take()
 	l.emit(jsonBracketLeft)
-	state.(stack).push(jsonBracketLeft)
+	state.push(jsonBracketLeft)
 
 	return stateJsonArray
 }
 
-func stateJsonObject(l lexer, state interface{}) stateFn {
+func stateJsonObject(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	var next stateFn
 	cur := l.peek()
 	switch cur {
 	case '}':
-		if top := state.(stack).peek(); top != nil && top.(int) != jsonBraceLeft {
+		if top, ok := state.peek(); ok && top != jsonBraceLeft {
 			next = l.errorf("Received %#U but has no matching '{'", cur)
 			break
 		}
 		l.take()
 		l.emit(jsonBraceRight)
-		state.(stack).pop()
+		state.pop()
 		next = stateJsonAfterValue
 	default:
 		next = stateJsonKey
@@ -99,19 +99,19 @@ func stateJsonObject(l lexer, state interface{}) stateFn {
 	return next
 }
 
-func stateJsonArray(l lexer, state interface{}) stateFn {
+func stateJsonArray(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	var next stateFn
 	cur := l.peek()
 	switch cur {
 	case ']':
-		if top := state.(stack).peek(); top != nil && top.(int) != jsonBracketLeft {
+		if top, ok := state.peek(); ok && top != jsonBracketLeft {
 			next = l.errorf("Received %#U but has no matching '['", cur)
 			break
 		}
 		l.take()
 		l.emit(jsonBracketRight)
-		state.(stack).pop()
+		state.pop()
 		next = stateJsonAfterValue
 	default:
 		next = stateJsonValue
@@ -119,14 +119,14 @@ func stateJsonArray(l lexer, state interface{}) stateFn {
 	return next
 }
 
-func stateJsonAfterValue(l lexer, state interface{}) stateFn {
+func stateJsonAfterValue(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	cur := l.peek()
-	top := state.(stack).peek()
+	top, ok := state.peek()
 	empty := noValue
 	val := empty
-	if top != nil {
-		val = top.(int)
+	if ok {
+		val = top
 	}
 
 	switch cur {
@@ -144,7 +144,7 @@ func stateJsonAfterValue(l lexer, state interface{}) stateFn {
 	case '}':
 		l.take()
 		l.emit(jsonBraceRight)
-		state.(stack).pop()
+		state.pop()
 		switch int(val) {
 		case jsonBraceLeft:
 			return stateJsonAfterValue
@@ -156,7 +156,7 @@ func stateJsonAfterValue(l lexer, state interface{}) stateFn {
 	case ']':
 		l.take()
 		l.emit(jsonBracketRight)
-		state.(stack).pop()
+		state.pop()
 		switch int(val) {
 		case jsonBraceLeft:
 			return l.errorf("Unexpected ] in object")
@@ -166,7 +166,7 @@ func stateJsonAfterValue(l lexer, state interface{}) stateFn {
 			return nil
 		}
 	case eof:
-		if state.(stack).len() == 0 {
+		if state.len() == 0 {
 			return nil
 		} else {
 			return l.errorf("Unexpected EOF instead of value")
@@ -177,7 +177,7 @@ func stateJsonAfterValue(l lexer, state interface{}) stateFn {
 	return nil
 }
 
-func stateJsonKey(l lexer, state interface{}) stateFn {
+func stateJsonKey(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	if err := takeString(l); err != nil {
 		return l.errorf(err.Error())
@@ -187,7 +187,7 @@ func stateJsonKey(l lexer, state interface{}) stateFn {
 	return stateJsonColon
 }
 
-func stateJsonColon(l lexer, state interface{}) stateFn {
+func stateJsonColon(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 
 	cur := l.peek()
@@ -200,7 +200,7 @@ func stateJsonColon(l lexer, state interface{}) stateFn {
 	return stateJsonValue
 }
 
-func stateJsonValue(l lexer, state interface{}) stateFn {
+func stateJsonValue(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	cur := l.peek()
 
@@ -224,7 +224,7 @@ func stateJsonValue(l lexer, state interface{}) stateFn {
 	}
 }
 
-func stateJsonString(l lexer, state interface{}) stateFn {
+func stateJsonString(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	if err := takeString(l); err != nil {
 		return l.errorf(err.Error())
@@ -233,7 +233,7 @@ func stateJsonString(l lexer, state interface{}) stateFn {
 	return stateJsonAfterValue
 }
 
-func stateJsonNumber(l lexer, state interface{}) stateFn {
+func stateJsonNumber(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	if err := takeNumeric(l); err != nil {
 		return l.errorf(err.Error())
@@ -242,7 +242,7 @@ func stateJsonNumber(l lexer, state interface{}) stateFn {
 	return stateJsonAfterValue
 }
 
-func stateJsonBool(l lexer, state interface{}) stateFn {
+func stateJsonBool(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	if !takeExactSequence(l, "true") {
 		if !takeExactSequence(l, "false") {
@@ -253,7 +253,7 @@ func stateJsonBool(l lexer, state interface{}) stateFn {
 	return stateJsonAfterValue
 }
 
-func stateJsonNull(l lexer, state interface{}) stateFn {
+func stateJsonNull(l lexer, state *stack) stateFn {
 	ignoreSpaceRun(l)
 	if !takeExactSequence(l, "null") {
 		return l.errorf("Could not parse value as 'null'")

@@ -13,7 +13,7 @@ type blexer struct {
 	currentStateFn stateFn
 	emittedItem    *Item
 	hasItem        bool
-	state          interface{}
+	state          *stack
 }
 
 func NewBytesLexer(input []byte, initial stateFn) *blexer {
@@ -76,7 +76,7 @@ func (l *blexer) next() (*Item, bool) {
 	return l.emittedItem, false
 }
 
-func (l *blexer) setState(val interface{}) {
+func (l *blexer) setState(val *stack) {
 	l.state = val
 }
 

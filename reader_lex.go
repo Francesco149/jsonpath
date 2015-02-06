@@ -17,7 +17,7 @@ type rlexer struct {
 	currentStateFn stateFn
 	emittedItem    *Item
 	hasItem        bool
-	state          interface{}
+	state          *stack
 }
 
 func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
@@ -93,7 +93,7 @@ func (l *rlexer) next() (*Item, bool) {
 	return l.emittedItem, false
 }
 
-func (l *rlexer) setState(val interface{}) {
+func (l *rlexer) setState(val *stack) {
 	l.state = val
 }
 
