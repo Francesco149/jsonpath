@@ -127,7 +127,7 @@ func readerToArray(tr tokenReader) []Item {
 		if !ok {
 			break
 		}
-		vals = append(vals, i)
+		vals = append(vals, *i)
 	}
 	return vals
 }

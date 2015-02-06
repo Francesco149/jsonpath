@@ -134,6 +134,19 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 	}
 }
 
+// Not comparable to previous benchmarks
+func BenchmarkStdUnmarshalJSON(b *testing.B) {
+	d := []byte(testJson)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		var x interface{}
+		err := json.Unmarshal(d, &x)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
 // func BenchmarkStringLexerJSONLarge(b *testing.B) {
 // 	input, _ := ioutil.ReadFile("large.test")
 // 	lexer := NewStringLexer(string(input), JSON)
@@ -175,5 +188,18 @@ func BenchmarkStdLibDecodeJSON(b *testing.B) {
 // 		var x struct{}
 // 		dec.Decode(&x)
 // 		reader.Seek(0, 0)
+// 	}
+// }
+
+// // Not comparable to previous benchmarks
+// func BenchmarkStdUnmarshalJSONLarge(b *testing.B) {
+// 	input, _ := ioutil.ReadFile("large.test")
+// 	b.ResetTimer()
+// 	for n := 0; n < b.N; n++ {
+// 		var x interface{}
+// 		err := json.Unmarshal(input, &x)
+// 		if err != nil {
+// 			b.Error(err)
+// 		}
 // 	}
 // }

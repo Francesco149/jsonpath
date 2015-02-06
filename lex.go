@@ -16,7 +16,7 @@ type Item struct {
 
 // Used by evaluator
 type tokenReader interface {
-	next() (Item, bool)
+	next() (*Item, bool)
 }
 
 // Used by state functions

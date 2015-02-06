@@ -13,7 +13,7 @@ type rlexer struct {
 	lexeme         bytes.Buffer
 	initialState   stateFn
 	currentStateFn stateFn
-	emittedItem    Item
+	emittedItem    *Item
 	hasItem        bool
 	state          interface{}
 }
@@ -24,6 +24,7 @@ func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
 		nextByte:       noValue,
 		initialState:   initial,
 		currentStateFn: initial,
+		emittedItem:    &Item{},
 	}
 	return &l
 }
@@ -57,11 +58,17 @@ func (l *rlexer) peek() int {
 }
 
 func (l *rlexer) emit(t int) {
-	i := Item{t, l.pos, l.lexeme.String()}
+	l.setItem(t, l.pos, l.lexeme.String())
+
 	l.pos += Pos(l.lexeme.Len())
 	l.lexeme.Truncate(0)
-	l.emittedItem = i
 	l.hasItem = true
+}
+
+func (l *rlexer) setItem(typ int, pos Pos, val string) {
+	l.emittedItem.typ = typ
+	l.emittedItem.pos = pos
+	l.emittedItem.val = val
 }
 
 func (l *rlexer) ignore() {
@@ -69,21 +76,20 @@ func (l *rlexer) ignore() {
 	l.lexeme.Truncate(0)
 }
 
-func (l *rlexer) next() (Item, bool) {
+func (l *rlexer) next() (*Item, bool) {
 	for {
 		if l.currentStateFn == nil {
-			return Item{}, false
+			return l.emittedItem, false
 		}
 
 		l.currentStateFn = l.currentStateFn(l, l.state)
 
 		if l.hasItem {
-			v := l.emittedItem
 			l.hasItem = false
-			return v, true
+			return l.emittedItem, true
 		}
 	}
-	return Item{}, false
+	return l.emittedItem, false
 }
 
 func (l *rlexer) setState(val interface{}) {
@@ -91,9 +97,8 @@ func (l *rlexer) setState(val interface{}) {
 }
 
 func (l *rlexer) errorf(format string, args ...interface{}) stateFn {
-	i := Item{jsonError, l.pos, fmt.Sprintf(format, args...)}
+	l.setItem(lexError, l.pos, fmt.Sprintf(format, args...))
 	l.lexeme.Truncate(0)
-	l.emittedItem = i
 	l.hasItem = true
 	return nil
 }

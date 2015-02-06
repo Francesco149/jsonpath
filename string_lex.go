@@ -11,7 +11,7 @@ type slexer struct {
 	width          Pos    // width of last rune read from input
 	initialState   stateFn
 	currentStateFn stateFn
-	emittedItem    Item
+	emittedItem    *Item
 	hasItem        bool
 	state          interface{}
 }
@@ -21,6 +21,7 @@ func NewStringLexer(input string, initial stateFn) *slexer {
 		input:          input,
 		initialState:   initial,
 		currentStateFn: initial,
+		emittedItem:    &Item{},
 	}
 	return l
 }
@@ -44,32 +45,35 @@ func (l *slexer) peek() int {
 }
 
 func (l *slexer) emit(t int) {
-	i := Item{t, l.start, l.input[l.start:l.pos]}
+	l.setItem(t, l.start, l.input[l.start:l.pos])
 	l.start = l.pos
-
-	l.emittedItem = i
 	l.hasItem = true
+}
+
+func (l *slexer) setItem(typ int, pos Pos, val string) {
+	l.emittedItem.typ = typ
+	l.emittedItem.pos = pos
+	l.emittedItem.val = val
 }
 
 func (l *slexer) ignore() {
 	l.start = l.pos
 }
 
-func (l *slexer) next() (Item, bool) {
+func (l *slexer) next() (*Item, bool) {
 	for {
 		if l.currentStateFn == nil {
-			return Item{}, false
+			return l.emittedItem, false
 		}
 
 		l.currentStateFn = l.currentStateFn(l, l.state)
 
 		if l.hasItem {
-			v := l.emittedItem
 			l.hasItem = false
-			return v, true
+			return l.emittedItem, true
 		}
 	}
-	return Item{}, false
+	return l.emittedItem, false
 }
 
 func (l *slexer) setState(val interface{}) {
@@ -77,9 +81,8 @@ func (l *slexer) setState(val interface{}) {
 }
 
 func (l *slexer) errorf(format string, args ...interface{}) stateFn {
-	i := Item{jsonError, l.start, fmt.Sprintf(format, args...)}
+	l.setItem(lexError, l.start, fmt.Sprintf(format, args...))
 	l.start = l.pos
-	l.emittedItem = i
 	l.hasItem = true
 	return nil
 }
