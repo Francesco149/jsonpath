@@ -77,7 +77,7 @@ func (l *slexer) setState(val interface{}) {
 }
 
 func (l *slexer) errorf(format string, args ...interface{}) stateFn {
-	i := Item{jsonError, l.start, fmt.Sprintf(format, args...)}
+	i := Item{lexError, l.start, fmt.Sprintf(format, args...)}
 	l.start = l.pos
 	l.emittedItem = i
 	l.hasItem = true

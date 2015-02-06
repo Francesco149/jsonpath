@@ -1,8 +1,8 @@
 package jsonpath
 
 const (
-	jsonEOF = iota
-	jsonError
+	jsonError = iota
+	jsonEOF
 
 	jsonBraceLeft
 	jsonBraceRight

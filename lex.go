@@ -4,8 +4,9 @@ type Pos int
 type stateFn func(lexer, interface{}) stateFn
 
 const (
-	eof     = -1
-	noValue = -2
+	lexError = 0 // must match jsonError and pathError
+	eof      = -1
+	noValue  = -2
 )
 
 type Item struct {
@@ -21,11 +22,11 @@ type tokenReader interface {
 
 // Used by state functions
 type lexer interface {
+	tokenReader
 	take() int
 	peek() int
 	emit(int)
 	ignore()
-	next() (Item, bool)
 	errorf(string, ...interface{}) stateFn
 	setState(interface{})
 	reset()
