@@ -1,13 +1,14 @@
 package jsonpath
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 )
 
 type rlexer struct {
-	input          io.Reader
+	input          *bufio.Reader
 	pos            Pos
 	nextByte       int
 	lexeme         bytes.Buffer
@@ -20,7 +21,7 @@ type rlexer struct {
 
 func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
 	l := rlexer{
-		input:          rr,
+		input:          bufio.NewReader(rr),
 		nextByte:       noValue,
 		initialState:   initial,
 		currentStateFn: initial,
@@ -45,15 +46,13 @@ func (l *rlexer) peek() int {
 		return l.nextByte
 	}
 
-	var r [1]byte
-	_, err := l.input.Read(r[:])
-
+	r, err := l.input.ReadByte()
 	if err == io.EOF {
 		l.nextByte = eof
 		return eof
 	}
 
-	l.nextByte = int(r[0])
+	l.nextByte = int(r)
 	return l.nextByte
 }
 
