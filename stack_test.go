@@ -8,7 +8,7 @@ import (
 
 func TestStackPush(t *testing.T) {
 	as := assert.New(t)
-	s := newStack()
+	s := newIntStack()
 
 	s.push(5)
 	as.Equal(s.len(), 1)
@@ -19,7 +19,7 @@ func TestStackPush(t *testing.T) {
 
 func TestStackPop(t *testing.T) {
 	as := assert.New(t)
-	s := newStack()
+	s := newIntStack()
 
 	s.push(99)
 	as.Equal(s.len(), 1)
@@ -33,7 +33,7 @@ func TestStackPop(t *testing.T) {
 
 func TestStackPeek(t *testing.T) {
 	as := assert.New(t)
-	s := newStack()
+	s := newIntStack()
 
 	s.push(99)
 	v, ok := s.peek()

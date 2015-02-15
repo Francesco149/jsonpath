@@ -1,7 +1,7 @@
 package jsonpath
 
 type Pos int
-type stateFn func(lexer, *stack) stateFn
+type stateFn func(lexer, *intStack) stateFn
 
 const (
 	lexError = 0 // must match jsonError and pathError
@@ -36,7 +36,7 @@ type lex struct {
 	currentStateFn stateFn
 	item           Item
 	hasItem        bool
-	stack          stack
+	stack          intStack
 }
 
 func newLex(initial stateFn) lex {
@@ -44,7 +44,7 @@ func newLex(initial stateFn) lex {
 		initialState:   initial,
 		currentStateFn: initial,
 		item:           Item{},
-		stack:          *newStack(),
+		stack:          *newIntStack(),
 	}
 }
 

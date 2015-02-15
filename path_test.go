@@ -1,93 +1,59 @@
 package jsonpath
 
 import (
-// "testing"
+	"testing"
 
-// "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
-// func TestPathToQuery(t *testing.T) {
-// 	as := assert.New(t)
-// 	items := make(chan Item, 100)
-// 	items <- Item{typ: pathRoot, val: `$`}
-// 	items <- Item{typ: pathPeriod, val: `.`}
-// 	items <- Item{typ: pathKey, val: `aKey`}
-// 	items <- Item{typ: pathPeriod, val: `.`}
-// 	items <- Item{typ: pathKey, val: `bKey`}
-// 	items <- Item{typ: pathBracketLeft, val: `[`}
-// 	items <- Item{typ: pathIndex, val: `234`}
-// 	items <- Item{typ: pathBracketRight, val: `]`}
-
-// 	close(items)
-
-// 	q, err := toQuery(items)
-// 	as.NoError(err)
-// 	as.Equal(len(q), 3, "Key count")
-// 	as.Equal(q[0].typ, keyTypeName)
-// 	as.Equal(q[0].keys, map[string]struct{}{"aKey": struct{}{}})
-// 	as.Equal(q[1].typ, keyTypeName)
-// 	as.Equal(q[1].keys, map[string]struct{}{"bKey": struct{}{}})
-// 	as.Equal(q[2].typ, keyTypeIndex)
-// 	as.Equal(q[2].indexStart, 234)
-// 	as.Equal(q[2].indexEnd, 234)
-// }
-
-// func TestTraverseValueTree(t *testing.T) {
-// 	as := assert.New(t)
-
-// 	items := make(chan Item, 100)
-// 	items <- Item{typ: jsonBraceLeft, val: `{`}
-// 	items <- Item{typ: jsonKey, val: `"aKey"`}
-// 	items <- Item{typ: jsonColon, val: `:`}
-// 	items <- Item{typ: jsonBraceLeft, val: `{`}
-// 	items <- Item{typ: jsonKey, val: `"bKey"`}
-// 	items <- Item{typ: jsonColon, val: `:`}
-// 	items <- Item{typ: jsonBracketLeft, val: `[`}
-// 	items <- Item{typ: jsonNumber, val: `123`}
-// 	items <- Item{typ: jsonComma, val: `,`}
-// 	items <- Item{typ: jsonNumber, val: `456`}
-// 	items <- Item{typ: jsonBracketRight, val: `]`}
-// 	items <- Item{typ: jsonBraceRight, val: `}`}
-// 	items <- Item{typ: jsonBraceRight, val: `}`}
-
-// 	// Should not capture these
-// 	items <- Item{typ: jsonNumber, val: `332`}
-// 	items <- Item{typ: jsonComma, val: `,`}
-// 	items <- Item{typ: jsonBraceLeft, val: `{`}
-// 	close(items)
-
-// 	res, err := traverseValueTree(items, true)
-// 	as.NoError(err)
-// 	as.Equal(`{"aKey":{"bKey":[123,456]}}`, res)
-// }
-
 type test struct {
+	name     string
 	json     string
 	path     string
-	expected [][]interface{}
+	expected []Result
 }
 
 var tests = []test{
-	test{`{"aKey":32}}`, `$.aKey`, [][]interface{}{[]interface{}{"aKey", `32`}}},
-	test{`{"aKey":{"bKey":32}}`, `$.aKey`, [][]interface{}{[]interface{}{"aKey", `{"bKey":32}`}}},
-	test{`{"aKey":{"bKey":32}}`, `$.aKey.bKey`, [][]interface{}{[]interface{}{"aKey", "bKey", "32"}}},
-	test{`{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey`, [][]interface{}{[]interface{}{"aKey", "bKey", `[123,456]`}}},
-	test{`{"aKey":{"bKey":[123]}}`, `$.aKey.bKey[0]`, [][]interface{}{[]interface{}{"aKey", "bKey", 0, `123`}}},
-	test{`{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey[1]`, [][]interface{}{[]interface{}{"aKey", "bKey", 1, `456`}}},
-	test{`{"aKey":{"bKey":{"trash":[0]}, "cKey":[123,456]}}`, `$.aKey.cKey[0]`, [][]interface{}{[]interface{}{"aKey", "cKey", 0, `123`}}},
+	test{`key-value object`, `{"aKey":32}`, `$.aKey+`, []Result{Result{b(`aKey`), b(`32`)}}},
+	test{`object selection`, `{"aKey":{"bKey":32}}`, `$.aKey+`, []Result{Result{b("aKey"), b(`{"bKey":32}`)}}},
+	test{`empty array`, `{"aKey":[]}`, `$.aKey+`, []Result{Result{b(`aKey`), b(`[]`)}}},
+	test{`multiple same-level keys`, `{ "aKey" : true, "bKey" : [ 1 , 2 ], "cKey" : true } `, `$.bKey+`, []Result{Result{b(`bKey`), b(`[1,2]`)}}},
+	test{`array selection`, `{"aKey":[123,456]}`, `$.aKey[1]+`, []Result{Result{b("aKey"), 1, b(`456`)}}},
+	test{`empty array - try selection`, `{"aKey":[]}`, `$.aKey[1]+`, []Result{}},
+	test{`empty object`, `{"aKey":{}}`, `$.aKey+`, []Result{Result{b(`aKey`), b(`{}`)}}},
+	test{`object w/ height=2`, `{"aKey":{"bKey":32}}`, `$.aKey.bKey+`, []Result{Result{b("aKey"), b("bKey"), b(`32`)}}},
+	test{`array of multiple types`, `{"aKey":[1,{"s":true},"asdf"]}`, `$.aKey[1]+`, []Result{Result{b("aKey"), 1, b(`{"s":true}`)}}},
+	test{`nested array selection`, `{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey+`, []Result{Result{b("aKey"), b("bKey"), b(`[123,456]`)}}},
+	test{`nested array`, `[[[[[]], [true, false, []]]]]`, `$[0][0][0][0]+`, []Result{Result{0, 0, 0, 0, b(`[]`)}}},
+	test{`index of array selection`, `{"aKey":{"bKey":[123]}}`, `$.aKey.bKey[0]+`, []Result{Result{b("aKey"), b("bKey"), 0, b(`123`)}}},
+	test{`index of array selection (more than one)`, `{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey[1]+`, []Result{Result{b("aKey"), b("bKey"), 1, b(`456`)}}},
+	test{`multi-level object/array`, `{"1Key":{"aKey": null, "bKey":{"trash":[1,2]}, "cKey":[123,456] }, "2Key":false}`, `$.1Key.bKey.trash[0]+`, []Result{Result{b("1Key"), b("bKey"), b("trash"), 0, b(`1`)}}},
+	test{`multi-level array`, `{"aKey":[true,false,null,{"michael":[5,6,7]}, ["s", "3"] ]}`, `$.*[*].michael[1]+`, []Result{Result{b("aKey"), 3, b("michael"), 1, b(`6`)}}},
 }
 
-// func TestPathQuery(t *testing.T) {
-// 	as := assert.New(t)
+func b(v string) []byte {
+	return []byte(v)
+}
 
-// 	for _, t := range tests {
-// 		results := GetByString(t.json, t.path)
-// 		as.Equal(t.expected, toInterfaceArray(results))
-// 	}
-// }
+func TestPathQuery(t *testing.T) {
+	as := assert.New(t)
 
-func toInterfaceArray(ch <-chan []interface{}) [][]interface{} {
-	vals := make([][]interface{}, 0)
+	for _, t := range tests {
+		eval, err := FindPathInBytes([]byte(t.json), t.path)
+		as.NoError(err)
+		res := toInterfaceArray(eval.Results)
+		// fmt.Println("--------")
+		// for _, r := range res {
+		// 	PrintResult(r, true)
+		// }
+		// fmt.Println("--------")
+		as.NoError(eval.Error)
+		as.Equal(t.expected, res, "Testing of %q", t.name)
+	}
+}
+
+func toInterfaceArray(ch <-chan Result) []Result {
+	vals := make([]Result, 0)
 	for l := range ch {
 		vals = append(vals, l)
 	}

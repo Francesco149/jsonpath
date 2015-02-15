@@ -13,11 +13,12 @@ const (
 	pathLength
 	pathWildcard
 	pathPeriod
+	pathValue
 )
 
 var pathTokenNames = map[int]string{
-	pathEOF:   "EOF",
 	pathError: "ERROR",
+	pathEOF:   "EOF",
 
 	pathRoot:         "$",
 	pathKey:          "KEY",
@@ -28,93 +29,83 @@ var pathTokenNames = map[int]string{
 	pathLength:       "LENGTH",
 	pathWildcard:     "*",
 	pathPeriod:       ".",
+	pathValue:        "+",
 }
 
 var PATH = lexPathRoot
 
-func lexPathRoot(l lexer, state *stack) stateFn {
+func lexPathRoot(l lexer, state *intStack) stateFn {
 	ignoreSpaceRun(l)
 	cur := l.peek()
 	if cur != '$' {
-		return l.errorf("Expected $ at start of path instead of  '%#U'", cur)
+		return l.errorf("Expected $ at start of path instead of  %#U", cur)
 	}
 
 	l.take()
 	l.emit(pathRoot)
 
-	return lexAfterElement
+	return lexPathAfterKey
 }
 
-func lexAfterElement(l lexer, state *stack) stateFn {
+func lexPathAfterKey(l lexer, state *intStack) stateFn {
 	cur := l.peek()
-	switch {
-	case cur == '.':
+	switch cur {
+	case '.':
 		l.take()
 		l.emit(pathPeriod)
 		return lexKey
-	case cur == '[':
+	case '[':
+		l.take()
+		l.emit(pathBracketLeft)
 		return lexPathArray
-	case cur == eof:
+	case '+':
+		l.take()
+		l.emit(pathValue)
+		return lexPathAfterValue
+	case eof:
 		return nil
 	default:
-		return l.errorf("Unrecognized rune after path element '%#U'", cur)
+		return l.errorf("Unrecognized rune after path element %#U", cur)
 	}
 	return nil
 }
 
-func lexKey(l lexer, state *stack) stateFn {
+func lexKey(l lexer, state *intStack) stateFn {
 	// TODO: Support globbing of keys
-	inQuotes := false
 	cur := l.peek()
-	if cur == '*' {
+	switch cur {
+	case '*':
 		l.take()
 		l.emit(pathWildcard)
-		return lexAfterElement
-	}
+		return lexPathAfterKey
+	case '"':
+		takeString(l, false)
+		l.emit(pathKey)
 
-	if cur == '"' {
-		l.ignore()
-		inQuotes = true
-	}
-
-looper:
-	for {
-		cur = l.peek()
-		switch {
-		case cur == eof:
-			break looper
-		case !inQuotes && (cur == '.' || cur == '['):
-			break looper
-		case inQuotes && cur == '"':
-			break looper
-		default:
-			l.take()
-		}
-	}
-	l.emit(pathKey)
-
-	if inQuotes {
-		cur = l.peek()
+		cur = l.take()
 		if cur != '"' {
-			return l.errorf("Expected \" instead of  '%#U'", cur)
-		} else {
-			l.ignore()
+			return l.errorf("Expected \" after quoted key instead of %#U", cur)
 		}
+		l.ignore() // skip the end quote
+		return lexPathAfterKey
+	case eof:
+		return nil
+	default:
+		takeWhere(l, func(v int) bool {
+			if v == '.' || v == '[' || v == '+' || v == eof {
+				return false
+			}
+			return true
+		})
+		l.emit(pathKey)
+		return lexPathAfterKey
 	}
-	return lexAfterElement
 }
 
-func lexPathArray(l lexer, state *stack) stateFn {
-	cur := l.peek()
-	if cur != '[' {
-		return l.errorf("Expected [ at start of array instead of  '%#U'", cur)
-	}
-	l.take()
-	l.emit(pathBracketLeft)
-
+func lexPathArray(l lexer, state *intStack) stateFn {
 	// TODO: Expand supported operations
 	// Currently only supports single index or wildcard (1 or all)
-	cur = l.peek()
+	cur := l.peek()
 	switch {
 	case isNumericStart(cur):
 		takeWhere(l, isDigit)
@@ -123,15 +114,27 @@ func lexPathArray(l lexer, state *stack) stateFn {
 		l.take()
 		l.emit(pathWildcard)
 	default:
-		return l.errorf("Expected digit instead of  '%#U'", cur)
+		return l.errorf("Expected digit instead of  %#U", cur)
 	}
 
-	cur = l.peek()
+	return lexPathArrayClose
+}
+
+func lexPathArrayClose(l lexer, state *intStack) stateFn {
+	cur := l.peek()
 	if cur != ']' {
-		return l.errorf("Expected ] instead of  '%#U'", cur)
+		return l.errorf("Expected ] instead of  %#U", cur)
 	}
 	l.take()
 	l.emit(pathBracketRight)
+	return lexPathAfterKey
+}
 
-	return lexAfterElement
+func lexPathAfterValue(l lexer, state *intStack) stateFn {
+	ignoreSpaceRun(l)
+	cur := l.peek()
+	if cur != eof {
+		return l.errorf("Expected EOF instead of %#U", cur)
+	}
+	return nil
 }

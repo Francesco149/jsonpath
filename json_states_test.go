@@ -83,7 +83,7 @@ func TestMalformedJson(t *testing.T) {
 // 	// as.True(len(remainingItems) <= bufferSize, "Count of remaining items should be less than buffer size: %d", len(remainingItems))
 // }
 
-var jsonExamples = []string{
+var examples = []string{
 	`{"items":[
 	  {
 	    "name": "example document for wicked fast parsing of huge json docs",
@@ -154,7 +154,7 @@ var jsonExamples = []string{
 
 func TestValidRealJson(t *testing.T) {
 	as := assert.New(t)
-	for _, json := range jsonExamples {
+	for _, json := range examples {
 		lexer := NewBytesLexer([]byte(json), JSON)
 		items := readerToArray(lexer)
 

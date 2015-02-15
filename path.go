@@ -3,121 +3,117 @@ package jsonpath
 import (
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"strconv"
 )
 
-func GetByString(input, path string) <-chan []interface{} {
-	query, err := parsePath(path)
-	if err != nil {
-		return nil
-	}
-
-	lexer := NewBytesLexer([]byte(input), JSON)
-	eval := newEvaluator(lexer)
-	return eval.run(query)
-}
-
-func Get(r io.Reader, path string) <-chan []interface{} {
-	query, err := parsePath(path)
-	if err != nil {
-		return nil
-	}
-
-	lexer := NewReaderLexer(r, JSON)
-	eval := newEvaluator(lexer)
-
-	return eval.run(query)
-}
-
 const (
-	keyTypeIndex = iota
-	keyTypeIndexRange
-	keyTypeIndexWild
-	keyTypeName
-	keyTypeNameList
-	keyTypeNameWild
+	opTypeIndex = iota
+	opTypeIndexRange
+	opTypeIndexWild
+	opTypeName
+	opTypeNameList
+	opTypeNameWild
 )
 
-type key struct {
-	typ int
-
-	indexStart int64
-	indexEnd   int64
-
-	keys map[string]struct{}
+type query struct {
+	captureEndValue bool
+	operators       []*operator
 }
 
-func genIndexKey(path <-chan Item) (*key, error) {
-	k := &key{}
-	first := <-path
-	switch first.typ {
+type operator struct {
+	typ int
+
+	indexStart int
+	indexEnd   int
+
+	keyStrings map[string]struct{}
+}
+
+func genIndexKey(tr tokenReader) (*operator, error) {
+	k := &operator{}
+	var t *Item
+	var ok bool
+	if t, ok = tr.next(); !ok {
+		return nil, errors.New("Expected number or *, but got none")
+	}
+
+	switch t.typ {
 	case pathWildcard:
-		k.typ = keyTypeIndexWild
+		k.typ = opTypeIndexWild
 		k.indexStart = 0
 		k.indexEnd = math.MaxInt64
-		end := <-path
-		if end.typ != pathBracketRight {
-			return nil, fmt.Errorf("Expected ] after * instead of %q", first.val)
+		if t, ok = tr.next(); !ok {
+			return nil, errors.New("Expected number or *, but got none")
+		}
+		if t.typ != pathBracketRight {
+			return nil, fmt.Errorf("Expected ] after * instead of %q", t.val)
 		}
 
 	case pathIndex:
-		v, err := strconv.ParseInt(string(first.val), 10, 64)
+		v, err := strconv.Atoi(string(t.val))
 		if err != nil {
-			return nil, fmt.Errorf("Could not parse %q into int64", first.val)
+			return nil, fmt.Errorf("Could not parse %q into int64", t.val)
 		}
 		k.indexStart = v
 		k.indexEnd = v
 
-		second := <-path
-		switch second.typ {
+		if t, ok = tr.next(); !ok {
+			return nil, errors.New("Expected number or *, but got none")
+		}
+		switch t.typ {
 		case pathBracketRight:
-			k.typ = keyTypeIndex
+			k.typ = opTypeIndex
 		// case path range
 		default:
-			return nil, fmt.Errorf("Unexpected value within brackets: %q", first.val)
+			return nil, fmt.Errorf("Unexpected value within brackets: %q", t.val)
 		}
 
 	default:
-		return nil, fmt.Errorf("Unexpected value within brackets: %q", first.val)
+		return nil, fmt.Errorf("Unexpected value within brackets: %q", t.val)
 	}
 
 	return k, nil
 }
 
-func parsePath(path string) ([]*key, error) {
-	// reader := strings.NewReader(path)
-	// lexer := NewBytesLexer(reader, 10)
-	// lexer.Run(PATH)
-
-	return []*key{}, nil
-	// return toQuery(lexer.items)
+func parsePath(path string) (*query, error) {
+	lexer := NewBytesLexer([]byte(path), PATH)
+	return toQuery(lexer)
 }
 
-func toQuery(path <-chan Item) ([]*key, error) {
-	query := make([]*key, 0)
-	for p := range path {
+func toQuery(tr tokenReader) (*query, error) {
+	q := &query{
+		captureEndValue: false,
+		operators:       make([]*operator, 0),
+	}
+	for {
+		p, ok := tr.next()
+		if !ok {
+			break
+		}
 		switch p.typ {
 		case pathRoot:
-			if len(query) != 0 {
+			if len(q.operators) != 0 {
 				return nil, errors.New("Unexpected root after start")
 			}
 			continue
 		case pathPeriod:
 			continue
 		case pathBracketLeft:
-			k, err := genIndexKey(path)
+			k, err := genIndexKey(tr)
 			if err != nil {
 				return nil, err
 			}
-			query = append(query, k)
+			q.operators = append(q.operators, k)
 		case pathKey:
-			query = append(query, &key{typ: keyTypeName, keys: map[string]struct{}{string(p.val): struct{}{}}})
+			q.operators = append(q.operators, &operator{typ: opTypeName, keyStrings: map[string]struct{}{string(p.val): struct{}{}}})
 		case pathWildcard:
-			query = append(query, &key{typ: keyTypeNameWild})
+			q.operators = append(q.operators, &operator{typ: opTypeNameWild})
+		case pathValue:
+			q.captureEndValue = true
+		case pathError:
+			return q, errors.New(string(p.val))
 		}
 	}
-
-	return query, nil
+	return q, nil
 }

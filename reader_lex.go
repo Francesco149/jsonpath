@@ -53,7 +53,9 @@ func (l *rlexer) peek() int {
 }
 
 func (l *rlexer) emit(t int) {
-	l.setItem(t, l.pos, l.lexeme.Bytes())
+	c := make([]byte, l.lexeme.Len())
+	copy(c, l.lexeme.Bytes())
+	l.setItem(t, l.pos, c)
 
 	l.pos += Pos(l.lexeme.Len())
 	l.hasItem = true

@@ -1,8 +1,6 @@
 package jsonpath
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type blexer struct {
 	lex
@@ -22,12 +20,10 @@ func NewBytesLexer(input []byte, initial stateFn) *blexer {
 
 func (l *blexer) take() int {
 	if int(l.pos) >= len(l.input) {
-		l.width = 0
 		return eof
 	}
 	r := int(l.input[l.pos])
-	l.width = 1
-	l.pos += l.width
+	l.pos += 1
 	return r
 }
 
@@ -80,6 +76,5 @@ func (l *blexer) errorf(format string, args ...interface{}) stateFn {
 func (l *blexer) reset() {
 	l.start = 0
 	l.pos = 0
-	l.width = 0
 	l.lex = newLex(l.initialState)
 }

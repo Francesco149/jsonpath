@@ -2,6 +2,7 @@ package main
 
 import (
 	// "bufio"
+
 	"flag"
 	"fmt"
 	"os"
@@ -13,7 +14,7 @@ func main() {
 	filePtr := flag.String("file", "", "Path to json file")
 	jsonPtr := flag.String("json", "", "JSON text")
 	pathPtr := flag.String("path", "", "Path to target in JSON")
-	valuePtr := flag.Bool("value", true, "Print value at end of path")
+	showPathPtr := flag.Bool("showPath", false, "Print keys & indexes that arrive to value")
 	flag.Parse()
 
 	if pathPtr == nil && *pathPtr != "" {
@@ -22,47 +23,36 @@ func main() {
 	}
 
 	if filePtr != nil && *filePtr != "" {
-		fmt.Println("Not implemented")
-		os.Exit(0)
-		// f, err := os.Open(*filePtr)
-		// if err != nil {
-		// 	fmt.Println(err.Error())
-		// 	os.Exit(1)
-		// }
-		// // reader := bufio.NewReader(f)
-		// results := jsonpath.GetByString("{}", *pathPtr)
-		// for l := range results {
-		// 	printLine(l, *valuePtr)
-		// }
-		// f.Close()
+		f, err := os.Open(*filePtr)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Failed to open file: %q", err.Error()))
+			os.Exit(1)
+		}
+
+		eval, err := jsonpath.FindPathInReader(f, *pathPtr)
+		checkAndHandleError(err)
+		for l := range eval.Results {
+			jsonpath.PrintResult(l, *showPathPtr)
+		}
+		checkAndHandleError(eval.Error)
+		f.Close()
 
 	} else if jsonPtr != nil && *jsonPtr != "" {
-		results := jsonpath.GetByString(*jsonPtr, *pathPtr)
-		for l := range results {
-			printLine(l, *valuePtr)
+		eval, err := jsonpath.FindPathInBytes([]byte(*jsonPtr), *pathPtr)
+		checkAndHandleError(err)
+		for l := range eval.Results {
+			jsonpath.PrintResult(l, *showPathPtr)
 		}
+		checkAndHandleError(eval.Error)
 	} else {
 		fmt.Println("Must specify file or string")
 		os.Exit(1)
 	}
 }
 
-func printLine(l []interface{}, printValue bool) {
-	for i, v := range l {
-		if i == len(l)-1 {
-			if !printValue {
-				continue
-			}
-		}
-		switch v := v.(type) {
-		case string:
-			fmt.Printf("%q", v)
-		case int64:
-			fmt.Printf("%d", v)
-		}
-		if i < len(l)-1 {
-			fmt.Printf(" ")
-		}
+func checkAndHandleError(err error) {
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
-	fmt.Println()
 }
