@@ -28,16 +28,13 @@ type eval struct {
 	state      evalStateFn
 	prevIndex  int
 	nextKey    []byte
+	copyValues bool
 
 	Results chan Result
 	Error   error
 }
 
 func newEvals(tr tokenReader, q *query) *eval {
-	if len(q.operators) == 0 {
-		return nil
-	}
-
 	e := &eval{
 		tr:         tr,
 		Results:    make(chan Result, 100),
@@ -47,30 +44,34 @@ func newEvals(tr tokenReader, q *query) *eval {
 		paths:      []*path{},
 		prevIndex:  -1,
 		nextKey:    nil,
+		copyValues: true, // depends on which lexer is used
 	}
 
-	p := &path{*q, e, pathMatchNextOp, -1, bytes.Buffer{}, stack{}}
+	// Determine whether to copy item values from lexer
+	switch tr.(type){
+		case *rlexer:
+			e.copyValues = true
+		default:
+			e.copyValues = false
+	}
+
+	p := &path{*q, e, pathMatchNextOp, -1, *bytes.NewBuffer(make([]byte, 0, 50)), stack{}}
 
 	e.paths = append(e.paths, p)
 	return e
 }
 
 func (e *eval) run() {
+	// f, _ := os.Create("/tmp/trace")
+	// pprof.StartCPUProfile(f)
 	for {
 		t, ok := e.tr.next()
 		if !ok || e.state == nil {
 			break
 		}
 
-		// printLevels(e.levelStack.toArray())
-		// printLoc(e.location.toArray())
 		// run evaluator function
 		e.state = e.state(e, t)
-		if e.Error != nil {
-			break
-		}
-		// printLoc(e.location.toArray(), interface{}(t.val))
-		// fmt.Println("")
 
 		anyRunning := false
 		// run path function for each path
@@ -84,7 +85,13 @@ func (e *eval) run() {
 		if !anyRunning {
 			break
 		}
+
+		if e.Error != nil {
+			break
+		}
 	}
+
+	// pprof.StopCPUProfile()
 
 	close(e.Results)
 }
@@ -110,7 +117,13 @@ func evalRoot(e *eval, i *Item) evalStateFn {
 func evalObjectAfterOpen(e *eval, i *Item) evalStateFn {
 	switch i.typ {
 	case jsonKey:
-		e.nextKey = i.val
+		c := i.val[1: len(i.val)-1]
+		if e.copyValues{
+			d := make([]byte, len(c))
+			copy(d, c)
+			c = d
+		}
+		e.nextKey = c
 		return evalObjectColon
 	case jsonBraceRight:
 		return rightBraceOrBracket(e)
@@ -136,8 +149,7 @@ func evalObjectColon(e *eval, i *Item) evalStateFn {
 }
 
 func evalObjectValue(e *eval, i *Item) evalStateFn {
-	trimmed := e.nextKey[1 : len(e.nextKey)-1]
-	e.location.push(trimmed)
+	e.location.push(e.nextKey)
 
 	switch i.typ {
 	case jsonNull, jsonNumber, jsonString, jsonBool:
@@ -327,7 +339,7 @@ func pathEndValue(p *path, i *Item) pathStateFn {
 		p.buffer.Truncate(0)
 		p.last -= 1
 		return pathMatchNextOp
-	}
+	}			
 	return pathEndValue
 }
 

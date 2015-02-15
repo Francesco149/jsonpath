@@ -8,9 +8,20 @@ import (
 	"os"
 
 	"github.com/NodePrime/jsonpath"
+	//"github.com/davecheney/profile"
 )
 
 func main() {
+   // cfg := profile.Config {
+   //           //   MemProfile: true,
+   // 	CPUProfile: true,
+   //             // NoShutdownHook: true, // do not hook SIGINT
+   //      }
+   //      // p.Stop() must be called before the program exits to  
+   //      // ensure profiling information is written to disk.
+   //      p := profile.Start(&cfg)
+   //      defer p.Stop()
+
 	filePtr := flag.String("file", "", "Path to json file")
 	jsonPtr := flag.String("json", "", "JSON text")
 	pathPtr := flag.String("path", "", "Path to target in JSON")

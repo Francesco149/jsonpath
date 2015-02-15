@@ -22,6 +22,7 @@ func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
 		bufInput: bufio.NewReader(rr),
 		nextByte: noValue,
 		lex:      newLex(initial),
+		lexeme:   *bytes.NewBuffer(make([]byte, 0, 100)),
 	}
 	return &l
 }
@@ -53,10 +54,7 @@ func (l *rlexer) peek() int {
 }
 
 func (l *rlexer) emit(t int) {
-	c := make([]byte, l.lexeme.Len())
-	copy(c, l.lexeme.Bytes())
-	l.setItem(t, l.pos, c)
-
+	l.setItem(t, l.pos, l.lexeme.Bytes())
 	l.pos += Pos(l.lexeme.Len())
 	l.hasItem = true
 }
