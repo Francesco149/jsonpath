@@ -48,11 +48,11 @@ func newEvals(tr tokenReader, q *query) *eval {
 	}
 
 	// Determine whether to copy item values from lexer
-	switch tr.(type){
-		case *rlexer:
-			e.copyValues = true
-		default:
-			e.copyValues = false
+	switch tr.(type) {
+	case *rlexer:
+		e.copyValues = true
+	default:
+		e.copyValues = false
 	}
 
 	p := &path{*q, e, pathMatchNextOp, -1, *bytes.NewBuffer(make([]byte, 0, 50)), stack{}}
@@ -117,8 +117,8 @@ func evalRoot(e *eval, i *Item) evalStateFn {
 func evalObjectAfterOpen(e *eval, i *Item) evalStateFn {
 	switch i.typ {
 	case jsonKey:
-		c := i.val[1: len(i.val)-1]
-		if e.copyValues{
+		c := i.val[1 : len(i.val)-1]
+		if e.copyValues {
 			d := make([]byte, len(c))
 			copy(d, c)
 			c = d
@@ -339,7 +339,7 @@ func pathEndValue(p *path, i *Item) pathStateFn {
 		p.buffer.Truncate(0)
 		p.last -= 1
 		return pathMatchNextOp
-	}			
+	}
 	return pathEndValue
 }
 

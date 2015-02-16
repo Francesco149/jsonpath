@@ -91,12 +91,13 @@ func lexKey(l lexer, state *intStack) stateFn {
 	case eof:
 		return nil
 	default:
-		takeWhere(l, func(v int) bool {
+		for {
+			v := l.peek()
 			if v == '.' || v == '[' || v == '+' || v == eof {
-				return false
+				break
 			}
-			return true
-		})
+			l.take()
+		}
 		l.emit(pathKey)
 		return lexPathAfterKey
 	}
@@ -108,7 +109,7 @@ func lexPathArray(l lexer, state *intStack) stateFn {
 	cur := l.peek()
 	switch {
 	case isNumericStart(cur):
-		takeWhere(l, isDigit)
+		takeDigits(l)
 		l.emit(pathIndex)
 	case cur == '*':
 		l.take()

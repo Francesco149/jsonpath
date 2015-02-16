@@ -13,7 +13,7 @@ type rlexer struct {
 	input    io.Reader
 	pos      Pos
 	nextByte int
-	lexeme   bytes.Buffer
+	lexeme   *bytes.Buffer
 }
 
 func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
@@ -22,7 +22,7 @@ func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
 		bufInput: bufio.NewReader(rr),
 		nextByte: noValue,
 		lex:      newLex(initial),
-		lexeme:   *bytes.NewBuffer(make([]byte, 0, 100)),
+		lexeme:   bytes.NewBuffer(make([]byte, 0, 100)),
 	}
 	return &l
 }
@@ -67,11 +67,11 @@ func (l *rlexer) setItem(typ int, pos Pos, val []byte) {
 
 func (l *rlexer) ignore() {
 	l.pos += Pos(l.lexeme.Len())
-	l.lexeme.Truncate(0)
+	l.lexeme.Reset()
 }
 
 func (l *rlexer) next() (*Item, bool) {
-	l.lexeme.Truncate(0)
+	l.lexeme.Reset()
 	for {
 		if l.currentStateFn == nil {
 			return &l.item, false
@@ -96,7 +96,7 @@ func (l *rlexer) errorf(format string, args ...interface{}) stateFn {
 
 func (l *rlexer) reset() {
 	l.bufInput.Reset(l.input)
-	l.lexeme.Truncate(0)
+	l.lexeme.Reset()
 	l.nextByte = noValue
 	l.pos = 0
 	l.lex = newLex(l.initialState)

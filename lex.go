@@ -48,6 +48,16 @@ func newLex(initial stateFn) lex {
 	}
 }
 
+func (i *Item) clone() *Item {
+	ic := Item{
+		typ: i.typ,
+		pos: i.pos,
+		val: make([]byte, len(i.val)),
+	}
+	copy(ic.val, i.val)
+	return &ic
+}
+
 func itemsDescription(items []Item, nameMap map[int]string) []string {
 	vals := make([]string, len(items))
 	for i, item := range items {

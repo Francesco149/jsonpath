@@ -3,8 +3,13 @@ package jsonpath
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"strings"
 	"testing"
+	// "io/ioutil"
+	// "os"
+	"fmt"
+	"math"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -59,8 +64,8 @@ const (
 	sampleDigits   = `[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50]`
 	sampleStrings  = `["abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc","abc"]`
 	sampleLiterals = `[null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false,null,true,false]`
-	sampleTree     = `{"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": "value"}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}`
-	sampleObject   = `{"abcdefghijklmnopqrstuvwxyz":"abcdefghijklmnopqrstuvwxyz"}`
+	sampleArrays   = `[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]`
+	sampleObjects  = `{"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": "value"}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}`
 )
 
 func BenchmarkUnmarshalObject(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleObject), b) }
@@ -88,10 +93,15 @@ func BenchmarkDecodeLiterals(b *testing.B)    { benchmarkStdLibDecode([]byte(sam
 func BenchmarkBytesLiterals(b *testing.B)     { benchmarkBytesLexer([]byte(sampleLiterals), b) }
 func BenchmarkReaderLiterals(b *testing.B)    { benchmarkReaderLexer([]byte(sampleLiterals), b) }
 
-func BenchmarkUnmarshalTree(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleTree), b) }
-func BenchmarkDecodeTree(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleTree), b) }
-func BenchmarkBytesTree(b *testing.B)     { benchmarkBytesLexer([]byte(sampleTree), b) }
-func BenchmarkReaderTree(b *testing.B)    { benchmarkReaderLexer([]byte(sampleTree), b) }
+func BenchmarkUnmarshalArrays(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleArrays), b) }
+func BenchmarkDecodeArrays(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleArrays), b) }
+func BenchmarkBytesArrays(b *testing.B)     { benchmarkBytesLexer([]byte(sampleArrays), b) }
+func BenchmarkReaderArrays(b *testing.B)    { benchmarkReaderLexer([]byte(sampleArrays), b) }
+
+func BenchmarkUnmarshalArrays(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleArrays), b) }
+func BenchmarkDecodeArrays(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleArrays), b) }
+func BenchmarkBytesArrays(b *testing.B)     { benchmarkBytesLexer([]byte(sampleArrays), b) }
+func BenchmarkReaderArrays(b *testing.B)    { benchmarkReaderLexer([]byte(sampleArrays), b) }
 
 func TestBytesLexerReset(t *testing.T) {
 	as := assert.New(t)
@@ -182,15 +192,103 @@ func benchmarkStdUnmarshal(input []byte, b *testing.B) {
 	}
 }
 
-// // Not comparable to previous benchmarks
-// func BenchmarkStdUnmarshalJSONLarge(b *testing.B) {
-// 	input, _ := ioutil.ReadFile("large.test")
-// 	b.ResetTimer()
-// 	for n := 0; n < b.N; n++ {
-// 		var x interface{}
-// 		err := json.Unmarshal(input, &x)
-// 		if err != nil {
-// 			b.Error(err)
-// 		}
-// 	}
-// }
+func benchmarkStdUnmarshalJSONLarge(b *testing.B) {
+	input, err := ioutil.ReadFile("large.test")
+	if err != nil {
+		b.SkipNow()
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		var x interface{}
+		err := json.Unmarshal(input, &x)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func BenchmarkStdUnmarshalLarge(b *testing.B) {
+	input, err := ioutil.ReadFile("large.test")
+	if err != nil {
+		b.SkipNow()
+	}
+	benchmarkStdUnmarshal(input, b)
+}
+
+func BenchmarkStdLibDecodeLarge(b *testing.B) {
+	input, err := ioutil.ReadFile("large.test")
+	reader := bytes.NewReader(input)
+	if err != nil {
+		b.SkipNow()
+	}
+	dec := json.NewDecoder(reader)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		var x struct{}
+		dec.Decode(&x)
+		reader.Seek(0, 0)
+	}
+}
+
+func BenchmarkBytesLexerLarge(b *testing.B) {
+	input, err := ioutil.ReadFile("large.test")
+	if err != nil {
+		b.SkipNow()
+	}
+	benchmarkBytesLexer(input, b)
+}
+
+func BenchmarkReaderLexerLarge(b *testing.B) {
+	input, err := ioutil.ReadFile("large.test")
+	if err != nil {
+		b.SkipNow()
+	}
+	reader := bytes.NewReader(input)
+	// reader, _ := os.Open("large.test")
+	lexer := NewReaderLexer(reader, JSON)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		for {
+			_, ok := lexer.next()
+			if !ok {
+				break
+			}
+		}
+		lexer.reset()
+		reader.Seek(0, 0)
+	}
+}
+
+type lexTest struct {
+	name  string
+	input string
+	items []Item
+}
+
+func i(tokenType int) Item {
+	return Item{tokenType, 0, []byte{}}
+}
+
+func typeIsEqual(i1, i2 []Item, printError bool) bool {
+	for k := 0; k < int(math.Max(float64(len(i1)), float64(len(i2)))); k++ {
+		if k < len(i1) {
+			if i1[k].typ == jsonError && printError {
+				fmt.Println(string(i1[k].val))
+			}
+		} else if k < len(i2) {
+			if i2[k].typ == jsonError && printError {
+				fmt.Println(string(i2[k].val))
+			}
+		}
+
+		if k >= len(i1) || k >= len(i2) {
+			return false
+		}
+
+		if i1[k].typ != i2[k].typ {
+			return false
+		}
+	}
+
+	return true
+}

@@ -6,7 +6,7 @@ type intStack struct {
 
 func newIntStack() *intStack {
 	return &intStack{
-		values: make([]int, 0),
+		values: make([]int, 0, 5),
 	}
 }
 
@@ -71,7 +71,7 @@ type stack struct {
 
 func newStack() *stack {
 	return &stack{
-		values: make([]interface{}, 0),
+		values: make([]interface{}, 0, 5),
 	}
 }
 

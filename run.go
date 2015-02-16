@@ -29,6 +29,15 @@ func FindPathInReader(r io.Reader, path string) (*eval, error) {
 	return eval, nil
 }
 
+func Iterate(l lexer) {
+	for {
+		_, ok := l.next()
+		if !ok {
+			break
+		}
+	}
+}
+
 func PrintResult(l Result, showPath bool) {
 	for i, v := range l {
 		if !showPath && i < len(l)-1 {
