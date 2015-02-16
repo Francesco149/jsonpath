@@ -68,11 +68,6 @@ const (
 	sampleObjects  = `{"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": {"child": "value"}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}`
 )
 
-func BenchmarkUnmarshalObject(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleObject), b) }
-func BenchmarkDecodeObject(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleObject), b) }
-func BenchmarkBytesObject(b *testing.B)     { benchmarkBytesLexer([]byte(sampleObject), b) }
-func BenchmarkReaderObject(b *testing.B)    { benchmarkReaderLexer([]byte(sampleObject), b) }
-
 func BenchmarkUnmarshalMix(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleMix), b) }
 func BenchmarkDecodeMix(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleMix), b) }
 func BenchmarkBytesMix(b *testing.B)     { benchmarkBytesLexer([]byte(sampleMix), b) }
@@ -98,10 +93,10 @@ func BenchmarkDecodeArrays(b *testing.B)    { benchmarkStdLibDecode([]byte(sampl
 func BenchmarkBytesArrays(b *testing.B)     { benchmarkBytesLexer([]byte(sampleArrays), b) }
 func BenchmarkReaderArrays(b *testing.B)    { benchmarkReaderLexer([]byte(sampleArrays), b) }
 
-func BenchmarkUnmarshalArrays(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleArrays), b) }
-func BenchmarkDecodeArrays(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleArrays), b) }
-func BenchmarkBytesArrays(b *testing.B)     { benchmarkBytesLexer([]byte(sampleArrays), b) }
-func BenchmarkReaderArrays(b *testing.B)    { benchmarkReaderLexer([]byte(sampleArrays), b) }
+func BenchmarkUnmarshalObjects(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleObjects), b) }
+func BenchmarkDecodeObjects(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleObjects), b) }
+func BenchmarkBytesObjects(b *testing.B)     { benchmarkBytesLexer([]byte(sampleObjects), b) }
+func BenchmarkReaderObjects(b *testing.B)    { benchmarkReaderLexer([]byte(sampleObjects), b) }
 
 func TestBytesLexerReset(t *testing.T) {
 	as := assert.New(t)
