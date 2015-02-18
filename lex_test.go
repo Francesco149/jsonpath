@@ -3,13 +3,12 @@ package jsonpath
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"math"
+	"os"
 	"strings"
 	"testing"
-	// "io/ioutil"
-	// "os"
-	"fmt"
-	"math"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -234,13 +233,13 @@ func BenchmarkBytesLexerLarge(b *testing.B) {
 }
 
 func BenchmarkReaderLexerLarge(b *testing.B) {
-	input, err := ioutil.ReadFile("large.test")
+	input, err := os.Open("large.test")
 	if err != nil {
 		b.SkipNow()
 	}
-	reader := bytes.NewReader(input)
+	// reader := io.NewReader(input)
 	// reader, _ := os.Open("large.test")
-	lexer := NewReaderLexer(reader, JSON)
+	lexer := NewReaderLexer(input, JSON)
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for {
@@ -250,7 +249,7 @@ func BenchmarkReaderLexerLarge(b *testing.B) {
 			}
 		}
 		lexer.reset()
-		reader.Seek(0, 0)
+		input.Seek(0, 0)
 	}
 }
 

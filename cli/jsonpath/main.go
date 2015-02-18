@@ -6,30 +6,32 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/NodePrime/jsonpath"
 	//"github.com/davecheney/profile"
 )
 
 func main() {
-   // cfg := profile.Config {
-   //           //   MemProfile: true,
-   // 	CPUProfile: true,
-   //             // NoShutdownHook: true, // do not hook SIGINT
-   //      }
-   //      // p.Stop() must be called before the program exits to  
-   //      // ensure profiling information is written to disk.
-   //      p := profile.Start(&cfg)
-   //      defer p.Stop()
+	// cfg := profile.Config {
+	//           //   MemProfile: true,
+	// 	CPUProfile: true,
+	//             // NoShutdownHook: true, // do not hook SIGINT
+	//      }
+	//      // p.Stop() must be called before the program exits to
+	//      // ensure profiling information is written to disk.
+	//      p := profile.Start(&cfg)
+	//      defer p.Stop()
 
+	var paths pathSlice
 	filePtr := flag.String("file", "", "Path to json file")
 	jsonPtr := flag.String("json", "", "JSON text")
-	pathPtr := flag.String("path", "", "Path to target in JSON")
+	flag.Var(&paths, "paths", "One or more paths to target in JSON")
 	showPathPtr := flag.Bool("showPath", false, "Print keys & indexes that arrive to value")
 	flag.Parse()
 
-	if pathPtr == nil && *pathPtr != "" {
-		fmt.Println("Must specify path")
+	if len(paths) == 0 {
+		fmt.Println("Must specify one or more paths with the   -paths   flag")
 		os.Exit(1)
 	}
 
@@ -40,7 +42,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		eval, err := jsonpath.FindPathInReader(f, *pathPtr)
+		eval, err := jsonpath.GetPathsInReader(f, paths...)
 		checkAndHandleError(err)
 		for l := range eval.Results {
 			jsonpath.PrintResult(l, *showPathPtr)
@@ -49,7 +51,7 @@ func main() {
 		f.Close()
 
 	} else if jsonPtr != nil && *jsonPtr != "" {
-		eval, err := jsonpath.FindPathInBytes([]byte(*jsonPtr), *pathPtr)
+		eval, err := jsonpath.GetPathsInBytes([]byte(*jsonPtr), paths...)
 		checkAndHandleError(err)
 		for l := range eval.Results {
 			jsonpath.PrintResult(l, *showPathPtr)
@@ -66,4 +68,17 @@ func checkAndHandleError(err error) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+type pathSlice []string
+
+func (i *pathSlice) Set(value string) error {
+	for _, dt := range strings.Split(value, ",") {
+		*i = append(*i, dt)
+	}
+	return nil
+}
+
+func (i *pathSlice) String() string {
+	return fmt.Sprint(*i)
 }

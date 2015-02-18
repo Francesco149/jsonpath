@@ -16,9 +16,10 @@ const (
 	opTypeNameWild
 )
 
-type query struct {
-	captureEndValue bool
+type path struct {
+	stringValue     string
 	operators       []*operator
+	captureEndValue bool
 }
 
 type operator struct {
@@ -76,13 +77,19 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 	return k, nil
 }
 
-func parsePath(path string) (*query, error) {
-	lexer := NewBytesLexer([]byte(path), PATH)
-	return toQuery(lexer)
+func parsePath(pathString string) (*path, error) {
+	lexer := NewBytesLexer([]byte(pathString), PATH)
+	p, err := generatePath(lexer)
+	if err != nil {
+		return nil, err
+	}
+	p.stringValue = pathString
+	return p, nil
 }
 
-func toQuery(tr tokenReader) (*query, error) {
-	q := &query{
+func generatePath(tr tokenReader) (*path, error) {
+	q := &path{
+		stringValue:     "",
 		captureEndValue: false,
 		operators:       make([]*operator, 0),
 	}

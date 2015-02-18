@@ -8,10 +8,12 @@ import (
 
 type Result []interface{}
 
-type path struct {
-	query
+type queryStateFn func(*query, *Item) queryStateFn
+
+type query struct {
+	path
 	state  *eval
-	next   pathStateFn
+	next   queryStateFn
 	last   int
 	buffer bytes.Buffer
 	valLoc stack
@@ -24,7 +26,7 @@ type eval struct {
 	tr         tokenReader
 	levelStack intStack
 	location   stack
-	paths      []*path
+	queries    map[string]*query
 	state      evalStateFn
 	prevIndex  int
 	nextKey    []byte
@@ -34,17 +36,28 @@ type eval struct {
 	Error   error
 }
 
-func newEvals(tr tokenReader, q *query) *eval {
+func newEvaluation(tr tokenReader, paths ...*path) *eval {
 	e := &eval{
 		tr:         tr,
 		Results:    make(chan Result, 100),
 		location:   *newStack(),
 		levelStack: *newIntStack(),
 		state:      evalRoot,
-		paths:      []*path{},
+		queries:    make(map[string]*query, 0),
 		prevIndex:  -1,
 		nextKey:    nil,
 		copyValues: true, // depends on which lexer is used
+	}
+
+	for _, p := range paths {
+		e.queries[p.stringValue] = &query{
+			path:   *p,
+			state:  e,
+			next:   pathMatchNextOp,
+			last:   -1,
+			buffer: *bytes.NewBuffer(make([]byte, 0, 50)),
+			valLoc: *newStack(),
+		}
 	}
 
 	// Determine whether to copy item values from lexer
@@ -55,9 +68,6 @@ func newEvals(tr tokenReader, q *query) *eval {
 		e.copyValues = false
 	}
 
-	p := &path{*q, e, pathMatchNextOp, -1, *bytes.NewBuffer(make([]byte, 0, 50)), stack{}}
-
-	e.paths = append(e.paths, p)
 	return e
 }
 
@@ -75,13 +85,16 @@ func (e *eval) run() {
 
 		anyRunning := false
 		// run path function for each path
-		for _, p := range e.paths {
-			if p.next != nil {
+		for str, query := range e.queries {
+			if query.next != nil {
 				anyRunning = true
-				p.next = p.next(p, t)
+				query.next = query.next(query, t)
+				if query.next == nil {
+					delete(e.queries, str)
+				}
 			}
 		}
-		// TODO: Improve early termination to stop iterating over nil paths
+
 		if !anyRunning {
 			break
 		}
@@ -287,57 +300,55 @@ func evalError(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-type pathStateFn func(*path, *Item) pathStateFn
-
-func print(p *path, i *Item) pathStateFn {
-	printLoc(p.state.location.toArray(), i.val)
+func print(q *query, i *Item) queryStateFn {
+	printLoc(q.state.location.toArray(), i.val)
 	return print
 }
 
-func pathMatchNextOp(p *path, i *Item) pathStateFn {
-	if p.last > p.state.location.len()-1 {
-		p.last -= 1
+func pathMatchNextOp(q *query, i *Item) queryStateFn {
+	if q.last > q.state.location.len()-1 {
+		q.last -= 1
 		return pathMatchNextOp
 	}
 
-	if p.last == p.state.location.len()-2 {
-		nextOp := p.operators[p.last+1]
-		current, ok := p.state.location.peek()
+	if q.last == q.state.location.len()-2 {
+		nextOp := q.operators[q.last+1]
+		current, ok := q.state.location.peek()
 		if ok {
 			if itemMatchOperator(current, i, nextOp) {
-				// printLoc(p.state.location.toArray())
-				p.last += 1
+				// printLoc(q.state.location.toArray())
+				q.last += 1
 			}
 		}
 	}
 
-	if p.last == len(p.operators)-1 {
-		if p.captureEndValue {
-			p.buffer.Write(i.val)
+	if q.last == len(q.operators)-1 {
+		if q.captureEndValue {
+			q.buffer.Write(i.val)
 		}
-		p.valLoc = *p.state.location.clone()
+		q.valLoc = *q.state.location.clone()
 		return pathEndValue
 	}
 
 	return pathMatchNextOp
 }
 
-func pathEndValue(p *path, i *Item) pathStateFn {
-	if p.state.location.len() >= p.valLoc.len() {
-		if p.captureEndValue {
-			p.buffer.Write(i.val)
+func pathEndValue(q *query, i *Item) queryStateFn {
+	if q.state.location.len() >= q.valLoc.len() {
+		if q.captureEndValue {
+			q.buffer.Write(i.val)
 		}
 	} else {
-		if p.buffer.Len() > 0 {
-			val := make([]byte, p.buffer.Len())
-			copy(val, p.buffer.Bytes())
-			p.valLoc.push(val)
+		if q.buffer.Len() > 0 {
+			val := make([]byte, q.buffer.Len())
+			copy(val, q.buffer.Bytes())
+			q.valLoc.push(val)
 		}
-		p.state.Results <- p.valLoc.toArray()
+		q.state.Results <- q.valLoc.toArray()
 
-		p.valLoc = *newStack()
-		p.buffer.Truncate(0)
-		p.last -= 1
+		q.valLoc = *newStack()
+		q.buffer.Truncate(0)
+		q.last -= 1
 		return pathMatchNextOp
 	}
 	return pathEndValue

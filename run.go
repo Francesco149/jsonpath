@@ -5,28 +5,39 @@ import (
 	"io"
 )
 
-func FindPathInBytes(input []byte, path string) (*eval, error) {
-	query, err := parsePath(path)
+func GetPathsInBytes(input []byte, pathStrings ...string) (*eval, error) {
+	paths, err := genPaths(pathStrings)
 	if err != nil {
 		return nil, err
 	}
-
 	lexer := NewBytesLexer(input, JSON)
-	eval := newEvals(lexer, query)
+	eval := newEvaluation(lexer, paths...)
 	go eval.run()
 	return eval, nil
 }
 
-func FindPathInReader(r io.Reader, path string) (*eval, error) {
-	query, err := parsePath(path)
+func GetPathsInReader(r io.Reader, pathStrings ...string) (*eval, error) {
+	paths, err := genPaths(pathStrings)
 	if err != nil {
 		return nil, err
 	}
 
 	lexer := NewReaderLexer(r, JSON)
-	eval := newEvals(lexer, query)
+	eval := newEvaluation(lexer, paths...)
 	go eval.run()
 	return eval, nil
+}
+
+func genPaths(pathStrings []string) ([]*path, error) {
+	paths := make([]*path, len(pathStrings))
+	for x, p := range pathStrings {
+		path, err := parsePath(p)
+		if err != nil {
+			return nil, err
+		}
+		paths[x] = path
+	}
+	return paths, nil
 }
 
 func Iterate(l lexer) {
