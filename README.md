@@ -1,72 +1,65 @@
-Path Syntax Elements  
-
-$ - root object/element  
-@ - current object  
-. or []  - child operator  
-- parent operator  
-* wildcard. All objets/elements regardless their names  
-[] - native array operator  
-[:] - slice functionality  
-| - OR operator Branch path with value set  
-.length - returns length of array  
-
-
-
-Use cases  
-Pull out values  
-Pull out keys  
-Pull out slice of array  
-
-Proposed Output  
-[][]string - Dynamic matrix of strings  
-
-Ex:  
-{ "store": {  
-    "book": [   
-      { "category": "reference",  
-        "author": "Nigel Rees",  
-        "title": "Sayings of the Century",  
-        "price": 8.95  
-      },  
-      { "category": "fiction",  
-        "author": "Evelyn Waugh",  
-        "title": "Sword of Honour",  
-        "price": 12.99  
-      },  
-      { "category": "fiction",  
-        "author": "Herman Melville",  
-        "title": "Moby Dick",  
-        "isbn": "0-553-21311-3",  
-        "price": 8.99  
-      },  
-      { "category": "fiction",  
-        "author": "J. R. R. Tolkien",  
-        "title": "The Lord of the Rings",  
-        "isbn": "0-395-19395-8",  
-        "price": 22.99  
-      }
-    ],
-    "bicycle": [{  
-      "color": "red",  
-      "price": 19.95  
-    }]  
-  }  
-}  
+# jsonpath  
   
-$.store.*[*].price|isbn    
-Results:  
-For each key, range, or evaluatable key/index, a column with that value will be populated. The final column will be the value  
+jsonpath is built to pull values out of a JSON document without unmarshalling the entire string.  You can specify one or more paths to specify what sections you'd like returned.   
   
-[  
-	["store", "book", 0, 8.95],  
-	["store", "book", 1, 12.99],  
-	["store", "book", 2, 8.99],  
-	["store", "bicycle", 0, 19.95]  
-]  
-
-
-
-
-
-
-
+## CLI   
+go get github.com/NodePrime/jsonpath/cli/jsonpath  TODO: Move this  
+jsonpath [-file="FILEPATH"] [-json="JSON"] -path='PATH' [...-path='...']  
+  
+TODO: Std-in json  
+  
+## Go Package  
+go get github.com/NodePrime/jsonpath  
+jsonpath.GetPathsInBytes(json []byte, pathStrings ...string) (*jsonpath.eval, error)  
+jsonpath.GetPathsInReader(r io.Reader, pathStrings ...string) (*jsonpath.eval, error)  
+  
+## Path Syntax  
+All paths start from the root node `$`.  Similar to getting properties in a JavaScript object, a period `.` or brackets `[ .. ]` are used.  
+  
+$ = root  
+. = property of  
+[*] = wildcard index of array  
+[N] = Nth index of array  
+* = wildcard property name  
+"P" = quoted property name in case property contains `.` or `[`  
+  
+Example:   
+	{  
+		"Items":   
+			[  
+				{  
+					"title": "A Midsummer Night's Dream",  
+					"description": "...",  
+					"tags":[  
+						"comedy",  
+						"shakespeare",  
+						"play"  
+					]  
+				},{  
+					"title": "A Tale of Two Cities",  
+					"description": "...",  
+					"tags":[  
+						"french",  
+						"revolution",  
+						"london"  
+					]  
+				}  
+			]  
+	}  
+  
+Example Paths:   
+`$.Items[*].title`    
+"A Midsummer Night's Dream"   
+"A Tale of Two Cities"   
+  
+`$.Items[*].tags+`    
+["comedy","shakespeare","play"]  
+["french","revolution","london"]  
+  
+`$.Items[*].tags[*]+`  
+"comedy"  
+"shakespeare"  
+"play"  
+"french"  
+"revolution"  
+"london"  
