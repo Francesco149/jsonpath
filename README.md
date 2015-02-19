@@ -1,14 +1,12 @@
 # jsonpath  
   
-jsonpath is built to pull values out of a JSON document without unmarshalling the entire string.  You can specify one or more paths to specify what sections you'd like returned.   
+jsonpath is built to pull values out of a JSON document without unmarshalling the entire string.  Provide one or more paths to return data from different locations.  The Go package will return an array of keys for each result so you know where the value came from.  Use the `showKeys` flag to view this in the CLI.  
   
 ### CLI   
 go get github.com/NodePrime/jsonpath/cli/jsonpath  TODO: Move this  
-jsonpath [-file="FILEPATH"] [-json="JSON"] -path='PATH' 
+jsonpath [-file="FILEPATH"] [-json="JSON"] [-showKeys] -path='PATH' 
   
-You can specify more than one path by repeating the path flag.  
-  
-TODO: Std-in json  
+You can specify more than one path by repeating the path flag.  If you do not use the `-file` or `-json` flags, then you can send JSON via StdIn.  
   
 ### Go Package  
 go get github.com/NodePrime/jsonpath  
