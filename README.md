@@ -20,9 +20,9 @@ All paths start from the root node `$`.  Similar to getting properties in a Java
   
 $ = root  
 . = property of  
-[**] = wildcard index of array  
+[`*`] = wildcard index of array  
 [N] = Nth index of array  
-** = wildcard property name  
+`*` = wildcard property name  
 "P" = quoted property name in case property contains `.` or `[`  
   
 Example: 
