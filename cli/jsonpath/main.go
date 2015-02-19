@@ -1,33 +1,21 @@
 package main
 
 import (
-	// "bufio"
-
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/NodePrime/jsonpath"
-	//"github.com/davecheney/profile"
 )
 
 func main() {
-	// cfg := profile.Config {
-	//           //   MemProfile: true,
-	// 	CPUProfile: true,
-	//             // NoShutdownHook: true, // do not hook SIGINT
-	//      }
-	//      // p.Stop() must be called before the program exits to
-	//      // ensure profiling information is written to disk.
-	//      p := profile.Start(&cfg)
-	//      defer p.Stop()
-
 	var paths pathSlice
 	filePtr := flag.String("file", "", "Path to json file")
 	jsonPtr := flag.String("json", "", "JSON text")
-	flag.Var(&paths, "paths", "One or more paths to target in JSON")
-	showPathPtr := flag.Bool("showPath", false, "Print keys & indexes that arrive to value")
+	flag.Var(&paths, "path", "One or more paths to target in JSON")
+	showKeysPtr := flag.Bool("showKeys", false, "Print keys & indexes that arrive to value")
 	flag.Parse()
 
 	if len(paths) == 0 {
@@ -45,7 +33,7 @@ func main() {
 		eval, err := jsonpath.GetPathsInReader(f, paths...)
 		checkAndHandleError(err)
 		for l := range eval.Results {
-			jsonpath.PrintResult(l, *showPathPtr)
+			jsonpath.PrintResult(l, *showKeysPtr)
 		}
 		checkAndHandleError(eval.Error)
 		f.Close()
@@ -54,12 +42,17 @@ func main() {
 		eval, err := jsonpath.GetPathsInBytes([]byte(*jsonPtr), paths...)
 		checkAndHandleError(err)
 		for l := range eval.Results {
-			jsonpath.PrintResult(l, *showPathPtr)
+			jsonpath.PrintResult(l, *showKeysPtr)
 		}
 		checkAndHandleError(eval.Error)
 	} else {
-		fmt.Println("Must specify file or string")
-		os.Exit(1)
+		reader := bufio.NewReader(os.Stdin)
+		eval, err := jsonpath.GetPathsInReader(reader, paths...)
+		checkAndHandleError(err)
+		for l := range eval.Results {
+			jsonpath.PrintResult(l, *showKeysPtr)
+		}
+		checkAndHandleError(eval.Error)
 	}
 }
 
