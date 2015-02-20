@@ -362,7 +362,6 @@ func itemMatchOperator(loc interface{}, i *Item, op *operator) bool {
 		case opTypeNameWild:
 			return true
 		case opTypeName, opTypeNameList:
-			// trimmedName := topBytes[1 : len(topBytes)-1]
 			_, found := op.keyStrings[string(topBytes)]
 			return found
 		}

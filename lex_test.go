@@ -133,6 +133,27 @@ func TestLexersAgainstEachOther(t *testing.T) {
 	as.Equal(sitems, ritems)
 }
 
+func TestLargeJSON(t *testing.T) {
+	as := assert.New(t)
+	input, err := ioutil.ReadFile("large.test")
+	if err != nil {
+		t.SkipNow()
+		return
+	}
+
+	lexer := NewBytesLexer(input, JSON)
+	for {
+		i, ok := lexer.next()
+		if i.typ == jsonError {
+			as.Fail(string(i.val))
+		}
+		_ = i
+		if !ok {
+			break
+		}
+	}
+}
+
 func benchmarkBytesLexer(input []byte, b *testing.B) {
 	lexer := NewBytesLexer(input, JSON)
 	b.ResetTimer()

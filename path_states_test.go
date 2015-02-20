@@ -7,13 +7,13 @@ import (
 )
 
 var pathTests = []lexTest{
-	{"simple", `$.akey`, []Item{i(pathRoot), i(pathPeriod), i(pathKey)}},
-	{"simple w/ value", `$.akey+`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathValue)}},
-	{"simple 2", `$.akey.akey2`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey)}},
-	{"simple 3", `$.akey.akey2.akey3`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey)}},
-	{"quoted keys", `$.akey."akey2".akey3`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey)}},
-	{"wildcard key", `$.akey.*.akey3`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathWildcard), i(pathPeriod), i(pathKey)}},
-	{"wildcard index", `$.akey[*]`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathBracketLeft), i(pathWildcard), i(pathBracketRight)}},
+	{"simple", `$.akey`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathEOF)}},
+	{"simple w/ value", `$.akey+`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathValue), i(pathEOF)}},
+	{"simple 2", `$.akey.akey2`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey), i(pathEOF)}},
+	{"simple 3", `$.akey.akey2.akey3`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey), i(pathEOF)}},
+	{"quoted keys", `$.akey."akey2".akey3`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathKey), i(pathEOF)}},
+	{"wildcard key", `$.akey.*.akey3`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathPeriod), i(pathWildcard), i(pathPeriod), i(pathKey), i(pathEOF)}},
+	{"wildcard index", `$.akey[*]`, []Item{i(pathRoot), i(pathPeriod), i(pathKey), i(pathBracketLeft), i(pathWildcard), i(pathBracketRight), i(pathEOF)}},
 }
 
 func TestValidPaths(t *testing.T) {

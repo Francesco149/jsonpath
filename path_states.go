@@ -48,22 +48,19 @@ func lexPathRoot(l lexer, state *intStack) stateFn {
 }
 
 func lexPathAfterKey(l lexer, state *intStack) stateFn {
-	cur := l.peek()
+	cur := l.take()
 	switch cur {
 	case '.':
-		l.take()
 		l.emit(pathPeriod)
 		return lexKey
 	case '[':
-		l.take()
 		l.emit(pathBracketLeft)
 		return lexPathArray
 	case '+':
-		l.take()
 		l.emit(pathValue)
 		return lexPathAfterValue
 	case eof:
-		return nil
+		l.emit(pathEOF)
 	default:
 		return l.errorf("Unrecognized rune after path element %#U", cur)
 	}
@@ -79,14 +76,9 @@ func lexKey(l lexer, state *intStack) stateFn {
 		l.emit(pathWildcard)
 		return lexPathAfterKey
 	case '"':
-		takeString(l, false)
+		takeString(l)
 		l.emit(pathKey)
 
-		cur = l.take()
-		if cur != '"' {
-			return l.errorf("Expected \" after quoted key instead of %#U", cur)
-		}
-		l.ignore() // skip the end quote
 		return lexPathAfterKey
 	case eof:
 		return nil
@@ -106,13 +98,12 @@ func lexKey(l lexer, state *intStack) stateFn {
 func lexPathArray(l lexer, state *intStack) stateFn {
 	// TODO: Expand supported operations
 	// Currently only supports single index or wildcard (1 or all)
-	cur := l.peek()
-	switch {
-	case isNumericStart(cur):
+	cur := l.take()
+	switch cur {
+	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		takeDigits(l)
 		l.emit(pathIndex)
-	case cur == '*':
-		l.take()
+	case '*':
 		l.emit(pathWildcard)
 	default:
 		return l.errorf("Expected digit instead of  %#U", cur)
@@ -122,20 +113,20 @@ func lexPathArray(l lexer, state *intStack) stateFn {
 }
 
 func lexPathArrayClose(l lexer, state *intStack) stateFn {
-	cur := l.peek()
+	cur := l.take()
 	if cur != ']' {
 		return l.errorf("Expected ] instead of  %#U", cur)
 	}
-	l.take()
 	l.emit(pathBracketRight)
 	return lexPathAfterKey
 }
 
 func lexPathAfterValue(l lexer, state *intStack) stateFn {
 	ignoreSpaceRun(l)
-	cur := l.peek()
+	cur := l.take()
 	if cur != eof {
 		return l.errorf("Expected EOF instead of %#U", cur)
 	}
+	l.emit(pathEOF)
 	return nil
 }
