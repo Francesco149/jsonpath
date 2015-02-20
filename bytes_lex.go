@@ -10,7 +10,6 @@ type blexer struct {
 	input []byte // the []byte being scanned.
 	start Pos    // start position of this Item.
 	pos   Pos    // current position in the input
-	width Pos    // width of last rune read from input
 }
 
 func NewBytesLexer(input []byte, initial stateFn) *blexer {
@@ -77,8 +76,19 @@ func (l *blexer) peek() int {
 
 func (l *blexer) emit(t int) {
 	l.setItem(t, l.start, l.input[l.start:l.pos])
-	l.start = l.pos
 	l.hasItem = true
+
+	// Ignore whitespace after this token
+	for int(l.pos) < len(l.input) {
+		r := l.input[l.pos]
+		if r == ' ' || r == '\t' || r == '\r' || r == '\n' {
+			l.pos++
+		} else {
+			break
+		}
+	}
+
+	l.start = l.pos
 }
 
 func (l *blexer) setItem(typ int, pos Pos, val []byte) {

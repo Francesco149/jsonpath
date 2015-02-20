@@ -90,6 +90,25 @@ func (l *rlexer) emit(t int) {
 	l.setItem(t, l.pos, l.lexeme.Bytes())
 	l.pos += Pos(l.lexeme.Len())
 	l.hasItem = true
+
+	// Ignore whitespace after this token
+	if l.nextByte == noValue {
+		l.peek()
+	}
+
+	for l.nextByte != eof {
+		if l.nextByte == ' ' || l.nextByte == '\t' || l.nextByte == '\r' || l.nextByte == '\n' {
+			l.pos++
+			r, err := l.bufInput.ReadByte()
+			if err == io.EOF {
+				l.nextByte = eof
+			} else {
+				l.nextByte = int(r)
+			}
+		} else {
+			break
+		}
+	}
 }
 
 func (l *rlexer) setItem(typ int, pos Pos, val []byte) {
