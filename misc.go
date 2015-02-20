@@ -114,9 +114,8 @@ func ignoreSpaceRun(l lexer) {
 
 func takeExactSequence(l lexer, str []byte) bool {
 	for _, r := range str {
-		if v := l.peek(); v == int(r) {
-			l.take()
-		} else {
+		v := l.take()
+		if v != int(r) {
 			return false
 		}
 	}
