@@ -76,7 +76,7 @@ func lexKey(l lexer, state *intStack) stateFn {
 		l.emit(pathWildcard)
 		return lexPathAfterKey
 	case '"':
-		takeString(l)
+		l.takeString()
 		l.emit(pathKey)
 
 		return lexPathAfterKey

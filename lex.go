@@ -24,6 +24,7 @@ type tokenReader interface {
 type lexer interface {
 	tokenReader
 	take() int
+	takeString() error
 	peek() int
 	emit(int)
 	ignore()
