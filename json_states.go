@@ -40,7 +40,6 @@ var jsonTokenNames = map[int]string{
 
 var JSON = lexJsonRoot
 
-// TODO: Handle array at root as well as object
 func lexJsonRoot(l lexer, state *intStack) stateFn {
 	ignoreSpaceRun(l)
 	cur := l.peek()
@@ -79,7 +78,6 @@ func stateJsonArrayOpen(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonObject(l lexer, state *intStack) stateFn {
-	ignoreSpaceRun(l)
 	var next stateFn
 	cur := l.peek()
 	switch cur {
@@ -101,7 +99,6 @@ func stateJsonObject(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonArray(l lexer, state *intStack) stateFn {
-	ignoreSpaceRun(l)
 	var next stateFn
 	cur := l.peek()
 	switch cur {
@@ -121,7 +118,6 @@ func stateJsonArray(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonAfterValue(l lexer, state *intStack) stateFn {
-	ignoreSpaceRun(l)
 	cur := l.take()
 	top, ok := state.peek()
 	val := noValue
@@ -175,7 +171,6 @@ func stateJsonAfterValue(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonKey(l lexer, state *intStack) stateFn {
-	ignoreSpaceRun(l)
 	if err := l.takeString(); err != nil {
 		return l.errorf(err.Error())
 	}
@@ -185,8 +180,6 @@ func stateJsonKey(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonColon(l lexer, state *intStack) stateFn {
-	ignoreSpaceRun(l)
-
 	cur := l.take()
 	if cur != ':' {
 		return l.errorf("Expected ':' after key string instead of %#U", cur)
@@ -197,7 +190,6 @@ func stateJsonColon(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonValue(l lexer, state *intStack) stateFn {
-	ignoreSpaceRun(l)
 	cur := l.peek()
 
 	switch cur {
@@ -221,7 +213,6 @@ func stateJsonValue(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonString(l lexer, state *intStack) stateFn {
-	//ignoreSpaceRun(l)
 	if err := l.takeString(); err != nil {
 		return l.errorf(err.Error())
 	}
@@ -230,7 +221,6 @@ func stateJsonString(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonNumber(l lexer, state *intStack) stateFn {
-	//ignoreSpaceRun(l)
 	if err := takeNumeric(l); err != nil {
 		return l.errorf(err.Error())
 	}
@@ -239,7 +229,6 @@ func stateJsonNumber(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonBool(l lexer, state *intStack) stateFn {
-	//ignoreSpaceRun(l)
 	cur := l.peek()
 	var match []byte
 	switch cur {
@@ -257,7 +246,6 @@ func stateJsonBool(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonNull(l lexer, state *intStack) stateFn {
-	//ignoreSpaceRun(l)
 	if !takeExactSequence(l, nullBytes) {
 		return l.errorf("Could not parse value as 'null'")
 	}

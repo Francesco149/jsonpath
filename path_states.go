@@ -122,7 +122,6 @@ func lexPathArrayClose(l lexer, state *intStack) stateFn {
 }
 
 func lexPathAfterValue(l lexer, state *intStack) stateFn {
-	ignoreSpaceRun(l)
 	cur := l.take()
 	if cur != eof {
 		return l.errorf("Expected EOF instead of %#U", cur)

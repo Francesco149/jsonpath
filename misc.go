@@ -74,6 +74,8 @@ func takeDigits(l lexer) {
 	}
 }
 
+// Only used at the very beginning of parsing. After that, the emit() function
+// automatically skips whitespace.
 func ignoreSpaceRun(l lexer) {
 	for {
 		r := l.peek()
