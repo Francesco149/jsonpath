@@ -176,7 +176,7 @@ func stateJsonAfterValue(l lexer, state *intStack) stateFn {
 
 func stateJsonKey(l lexer, state *intStack) stateFn {
 	ignoreSpaceRun(l)
-	if err := takeString(l); err != nil {
+	if err := l.takeString(); err != nil {
 		return l.errorf(err.Error())
 	}
 	l.emit(jsonKey)
@@ -222,7 +222,7 @@ func stateJsonValue(l lexer, state *intStack) stateFn {
 
 func stateJsonString(l lexer, state *intStack) stateFn {
 	//ignoreSpaceRun(l)
-	if err := takeString(l); err != nil {
+	if err := l.takeString(); err != nil {
 		return l.errorf(err.Error())
 	}
 	l.emit(jsonString)

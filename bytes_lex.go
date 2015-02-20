@@ -1,6 +1,9 @@
 package jsonpath
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type blexer struct {
 	lex
@@ -25,6 +28,44 @@ func (l *blexer) take() int {
 	r := int(l.input[l.pos])
 	l.pos += 1
 	return r
+}
+
+func (l *blexer) takeString() error {
+	curPos := l.pos
+	inputLen := len(l.input)
+
+	if int(curPos) >= inputLen {
+		return errors.New("End of file where string expected")
+	}
+
+	cur := int(l.input[curPos])
+	curPos++
+	if cur != '"' {
+		l.pos = curPos
+		return fmt.Errorf("Expected \" as start of string instead of %#U", cur)
+	}
+
+	var previous int
+looper:
+	for {
+		if int(curPos) >= inputLen {
+			l.pos = curPos
+			return errors.New("End of file where string expected")
+		}
+		cur := int(l.input[curPos])
+		curPos++
+		if cur == '"' {
+			if previous == noValue || previous != '\\' {
+				break looper
+			} else {
+				l.take()
+			}
+		}
+
+		previous = cur
+	}
+	l.pos = curPos
+	return nil
 }
 
 func (l *blexer) peek() int {

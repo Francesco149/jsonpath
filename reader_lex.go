@@ -3,6 +3,7 @@ package jsonpath
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -36,6 +37,38 @@ func (l *rlexer) take() int {
 	l.nextByte = noValue
 	l.lexeme.WriteByte(byte(nr))
 	return nr
+}
+
+func (l *rlexer) takeString() error {
+	cur := l.take()
+	if cur != '"' {
+		return fmt.Errorf("Expected \" as start of string instead of %#U", cur)
+	}
+
+	var previous byte
+looper:
+	for {
+		curByte, err := l.bufInput.ReadByte()
+		if err == io.EOF {
+			return errors.New("Unexpected EOF in string")
+		}
+		l.lexeme.WriteByte(curByte)
+
+		if curByte == '"' {
+			if previous != '\\' {
+				break looper
+			} else {
+				curByte, err = l.bufInput.ReadByte()
+				if err == io.EOF {
+					return errors.New("Unexpected EOF in string")
+				}
+				l.lexeme.WriteByte(curByte)
+			}
+		}
+
+		previous = curByte
+	}
+	return nil
 }
 
 func (l *rlexer) peek() int {

@@ -63,32 +63,6 @@ func takeNumeric(l lexer) error {
 	return nil
 }
 
-func takeString(l lexer) error {
-	cur := l.take()
-	if cur != '"' {
-		return fmt.Errorf("Expected \" as start of string instead of %#U", cur)
-	}
-
-	var previous int
-looper:
-	for {
-		cur = l.take()
-		switch cur {
-		case '"':
-			if previous == noValue || previous != '\\' {
-				break looper
-			} else {
-				l.take()
-			}
-		case eof:
-			return fmt.Errorf("Unexpected EOF in string")
-		}
-
-		previous = cur
-	}
-	return nil
-}
-
 func takeDigits(l lexer) {
 	for {
 		d := l.peek()
