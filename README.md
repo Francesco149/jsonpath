@@ -7,10 +7,10 @@ The evaluator can be initialized with several paths, so you can retrieve multipl
 For each value returned by a path, you'll also get the keys & indexes needed to reach that value.  Use the `showKeys` flag to view this in the CLI.  The Go package will return an `[]interface{}` of length `n` with indexes `0 - (n-2)` being the keys and the value at index `n-1`.  
   
 ### CLI   
-go get github.com/NodePrime/jsonpath/cli/jsonpath
-jsonpath [-file="FILEPATH"] [-json="JSON"] [-showKeys] -path='PATH' 
+`go get github.com/NodePrime/jsonpath/cli/jsonpath`  
+`jsonpath [-file="FILEPATH"] [-json="{...}"] [-showKeys] -path='PATH'` 
   
-You can specify more than one path by repeating the path flag.  If you do not use the `-file` or `-json` flags, then you can pipe JSON to StdIn.  
+You can specify more than one path by repeating the `path` flag.  If you do not use the `-file` or `-json` flags, then you can pipe JSON to StdIn.  
   
 ### Go Package  
 go get github.com/NodePrime/jsonpath  
