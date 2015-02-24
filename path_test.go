@@ -19,6 +19,9 @@ var optests = []optest{
 	optest{"single index", `$[12]`, []int{opTypeIndex}},
 	optest{"single key", `$[23:45]`, []int{opTypeIndexRange}},
 	optest{"single key", `$[*]`, []int{opTypeIndexWild}},
+
+	optest{"double key", `$["aKey"]["bKey"]`, []int{opTypeName, opTypeName}},
+	optest{"double key", `$["aKey"].bKey`, []int{opTypeName, opTypeName}},
 }
 
 func TestQueryOperators(t *testing.T) {

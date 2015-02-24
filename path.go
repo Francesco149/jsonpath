@@ -36,7 +36,7 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 	var t *Item
 	var ok bool
 	if t, ok = tr.next(); !ok {
-		return nil, errors.New("Expected number or *, but got none")
+		return nil, errors.New("Expected number, key, or *, but got none")
 	}
 
 	switch t.typ {
@@ -50,7 +50,6 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 		if t.typ != pathBracketRight {
 			return nil, fmt.Errorf("Expected ] after * instead of %q", t.val)
 		}
-
 	case pathIndex:
 		v, err := strconv.Atoi(string(t.val))
 		if err != nil {
@@ -76,7 +75,7 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 				k.indexEnd = v - 1
 
 				if t, ok = tr.next(); !ok || t.typ != pathBracketRight {
-					return nil, errors.New("Expected number or *, but got none")
+					return nil, errors.New("Expected ], but got none")
 				}
 			case pathBracketRight:
 				k.indexEnd = math.MaxInt64
@@ -91,8 +90,12 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 			return nil, fmt.Errorf("Unexpected value within brackets after index: %q", t.val)
 		}
 	case pathKey:
-		k.keyStrings = map[string]struct{}{string(t.val): struct{}{}}
+		k.keyStrings = map[string]struct{}{string(t.val[1 : len(t.val)-1]): struct{}{}}
 		k.typ = opTypeName
+
+		if t, ok = tr.next(); !ok || t.typ != pathBracketRight {
+			return nil, errors.New("Expected ], but got none")
+		}
 	default:
 		return nil, fmt.Errorf("Unexpected value within brackets: %q", t.val)
 	}
@@ -136,7 +139,11 @@ func generatePath(tr tokenReader) (*path, error) {
 			}
 			q.operators = append(q.operators, k)
 		case pathKey:
-			q.operators = append(q.operators, &operator{typ: opTypeName, keyStrings: map[string]struct{}{string(p.val): struct{}{}}})
+			keyName := p.val
+			if p.val[0] == '"' && p.val[len(p.val)-1] == '"' {
+				keyName = p.val[1 : len(p.val)-1]
+			}
+			q.operators = append(q.operators, &operator{typ: opTypeName, keyStrings: map[string]struct{}{string(keyName): struct{}{}}})
 		case pathWildcard:
 			q.operators = append(q.operators, &operator{typ: opTypeNameWild})
 		case pathValue:

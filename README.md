@@ -22,8 +22,8 @@ or
 then
 ```go
 for r := range eval.Results {
-	// skip keys/indexes & print value string
-	fmt.Println(r[len(r)-1].(string))	
+	// skip keys/indexes & get final byte data
+	fmt.Println(r[len(r)-1].([]byte]))	
 }
 if eval.Error != nil {
 	return eval.Error
