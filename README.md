@@ -37,11 +37,13 @@ All paths start from the root node `$`.  Similar to getting properties in a Java
   
 `$` = root  
 `.` = property of  
-`[*]` = wildcard index of array  
-`[n]` = Nth index of array  
+`["abc"]` = quoted property name  
 `*` = wildcard property name  
-`"abc"` = quoted property name in case property contains `.` or `[`  
-`+` = get value at end of path
+`[n]` = Nth index of array  
+`[n:m]` = Nth index to m-1 index (same as Go Slicing)  
+`[n:]` = Nth index to end of array  
+`[*]` = wildcard index of array  
+`+` = get value at end of path  
   
 Example: 
 ```javascript

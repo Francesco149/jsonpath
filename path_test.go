@@ -6,57 +6,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type test struct {
+type optest struct {
 	name     string
-	json     string
 	path     string
-	expected []Result
+	expected []int
 }
 
-var tests = []test{
-	test{`key-value object`, `{"aKey":32}`, `$.aKey+`, []Result{Result{b(`aKey`), b(`32`)}}},
-	test{`object selection`, `{"aKey":{"bKey":32}}`, `$.aKey+`, []Result{Result{b("aKey"), b(`{"bKey":32}`)}}},
-	test{`empty array`, `{"aKey":[]}`, `$.aKey+`, []Result{Result{b(`aKey`), b(`[]`)}}},
-	test{`multiple same-level keys, weird spacing`, `{    "aKey" 	: true ,    "bKey":  [	1 , 2	], "cKey" 	: true		} `, `$.bKey+`, []Result{Result{b(`bKey`), b(`[1,2]`)}}},
-	test{`array selection`, `{"aKey":[123,456]}`, `$.aKey[1]+`, []Result{Result{b("aKey"), 1, b(`456`)}}},
-	test{`empty array - try selection`, `{"aKey":[]}`, `$.aKey[1]+`, []Result{}},
-	test{`empty object`, `{"aKey":{}}`, `$.aKey+`, []Result{Result{b(`aKey`), b(`{}`)}}},
-	test{`object w/ height=2`, `{"aKey":{"bKey":32}}`, `$.aKey.bKey+`, []Result{Result{b("aKey"), b("bKey"), b(`32`)}}},
-	test{`array of multiple types`, `{"aKey":[1,{"s":true},"asdf"]}`, `$.aKey[1]+`, []Result{Result{b("aKey"), 1, b(`{"s":true}`)}}},
-	test{`nested array selection`, `{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey+`, []Result{Result{b("aKey"), b("bKey"), b(`[123,456]`)}}},
-	test{`nested array`, `[[[[[]], [true, false, []]]]]`, `$[0][0][1][2]+`, []Result{Result{0, 0, 1, 2, b(`[]`)}}},
-	test{`index of array selection`, `{"aKey":{"bKey":[123, 456, 789]}}`, `$.aKey.bKey[1]+`, []Result{Result{b("aKey"), b("bKey"), 1, b(`456`)}}},
-	test{`index of array selection (more than one)`, `{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey[1]+`, []Result{Result{b("aKey"), b("bKey"), 1, b(`456`)}}},
-	test{`multi-level object/array`, `{"1Key":{"aKey": null, "bKey":{"trash":[1,2]}, "cKey":[123,456] }, "2Key":false}`, `$.1Key.bKey.trash[0]+`, []Result{Result{b("1Key"), b("bKey"), b("trash"), 0, b(`1`)}}},
-	test{`multi-level array`, `{"aKey":[true,false,null,{"michael":[5,6,7]}, ["s", "3"] ]}`, `$.*[*].michael[1]+`, []Result{Result{b("aKey"), 3, b("michael"), 1, b(`6`)}}},
-	test{`multi-level array 2`, `{"aKey":[true,false,null,{"michael":[5,6,7]}, ["s", "3"] ]}`, `$.*[*][1]+`, []Result{Result{b("aKey"), 4, 1, b(`"3"`)}}},
+var optests = []optest{
+	optest{"single key (period) ", `$.aKey`, []int{opTypeName}},
+	optest{"single key (bracket)", `$["aKey"]`, []int{opTypeName}},
+	optest{"single key (period) ", `$.*`, []int{opTypeNameWild}},
+	optest{"single index", `$[12]`, []int{opTypeIndex}},
+	optest{"single key", `$[23:45]`, []int{opTypeIndexRange}},
+	optest{"single key", `$[*]`, []int{opTypeIndexWild}},
 }
 
-func TestPathQuery(t *testing.T) {
+func TestQueryOperators(t *testing.T) {
 	as := assert.New(t)
 
-	for _, t := range tests {
-		eval, err := GetPathsInBytes([]byte(t.json), t.path)
+	for _, t := range optests {
+		path, err := parsePath(t.path)
 		as.NoError(err)
-		res := toInterfaceArray(eval.Results)
-		// fmt.Println("--------")
-		// for _, r := range res {
-		// 	PrintResult(r, true)
-		// }
-		// fmt.Println("--------")
-		as.NoError(eval.Error)
-		as.Equal(t.expected, res, "Testing of %q", t.name)
-	}
-}
 
-func b(v string) []byte {
-	return []byte(v)
-}
+		as.Equal(len(t.expected), len(path.operators))
 
-func toInterfaceArray(ch <-chan Result) []Result {
-	vals := make([]Result, 0)
-	for l := range ch {
-		vals = append(vals, l)
+		for x, op := range t.expected {
+			as.Equal(pathTokenNames[op], pathTokenNames[path.operators[x].typ])
+		}
 	}
-	return vals
 }

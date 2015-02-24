@@ -45,7 +45,7 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 		k.indexStart = 0
 		k.indexEnd = math.MaxInt64
 		if t, ok = tr.next(); !ok {
-			return nil, errors.New("Expected number or *, but got none")
+			return nil, errors.New("Expected ] after *, but got none")
 		}
 		if t.typ != pathBracketRight {
 			return nil, fmt.Errorf("Expected ] after * instead of %q", t.val)
@@ -63,13 +63,36 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 			return nil, errors.New("Expected number or *, but got none")
 		}
 		switch t.typ {
+		case pathIndexRange:
+			if t, ok = tr.next(); !ok {
+				return nil, errors.New("Expected number or *, but got none")
+			}
+			switch t.typ {
+			case pathIndex:
+				v, err := strconv.Atoi(string(t.val))
+				if err != nil {
+					return nil, fmt.Errorf("Could not parse %q into int64", t.val)
+				}
+				k.indexEnd = v - 1
+
+				if t, ok = tr.next(); !ok || t.typ != pathBracketRight {
+					return nil, errors.New("Expected number or *, but got none")
+				}
+			case pathBracketRight:
+				k.indexEnd = math.MaxInt64
+			default:
+				return nil, fmt.Errorf("Unexpected value within brackets after index: %q", t.val)
+			}
+
+			k.typ = opTypeIndexRange
 		case pathBracketRight:
 			k.typ = opTypeIndex
-		// case path range
 		default:
-			return nil, fmt.Errorf("Unexpected value within brackets: %q", t.val)
+			return nil, fmt.Errorf("Unexpected value within brackets after index: %q", t.val)
 		}
-
+	case pathKey:
+		k.keyStrings = map[string]struct{}{string(t.val): struct{}{}}
+		k.typ = opTypeName
 	default:
 		return nil, fmt.Errorf("Unexpected value within brackets: %q", t.val)
 	}
