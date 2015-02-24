@@ -12,6 +12,8 @@ For each value returned by a path, you'll also get the keys & indexes needed to 
   
 You can specify more than one path by repeating the `path` flag.  If you do not use the `-file` or `-json` flags, then you can pipe JSON to StdIn.  
   
+If `showKeys` is enabled, keys/indexes & values are tab-separated.  
+  
 ### Go Package  
 go get github.com/NodePrime/jsonpath  
   
@@ -70,18 +72,30 @@ Example:
 ```
 	
 Example Paths:   
-`$.Items[*].title+`    
-"A Midsummer Night's Dream"   
-"A Tale of Two Cities"   
+*CLI*  
+`jsonpath -file=example.json -path='$.Items[*].tags[*]+' -showKeys`  
+Items	0	tags	0	"comedy"  
+Items	0	tags	1	"shakespeare"  
+Items	0	tags	2	"play"  
+Items	1	tags	0	"french"  
+Items	1	tags	1	"revolution"  
+Items	1	tags	2	"london"  
+
+*Package*  
+`$.Items[*].title+`   
+... "A Midsummer Night's Dream"   
+... "A Tale of Two Cities"   
   
 `$.Items[*].tags+`    
-["comedy","shakespeare","play"]  
-["french","revolution","london"]  
+... ["comedy","shakespeare","play"]  
+... ["french","revolution","london"]  
   
 `$.Items[*].tags[*]+`  
-"comedy"  
-"shakespeare"  
-"play"  
-"french"  
-"revolution"  
-"london"  
+... "comedy"  
+... "shakespeare"  
+... "play"  
+... "french"  
+... "revolution"  
+...  "london"  
+  
+... = keys/indexes of path
