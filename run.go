@@ -10,7 +10,7 @@ func GetPathsInBytes(input []byte, pathStrings ...string) (*eval, error) {
 	if err != nil {
 		return nil, err
 	}
-	lexer := NewBytesLexer(input, JSON)
+	lexer := NewSliceLexer(input, JSON)
 	eval := newEvaluation(lexer, paths...)
 	go eval.run()
 	return eval, nil

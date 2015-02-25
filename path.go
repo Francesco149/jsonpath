@@ -104,7 +104,7 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 }
 
 func parsePath(pathString string) (*path, error) {
-	lexer := NewBytesLexer([]byte(pathString), PATH)
+	lexer := NewSliceLexer([]byte(pathString), PATH)
 	p, err := generatePath(lexer)
 	if err != nil {
 		return nil, err
