@@ -29,6 +29,8 @@ type operator struct {
 	indexEnd   int
 
 	keyStrings map[string]struct{}
+
+	whereClause []byte
 }
 
 func genIndexKey(tr tokenReader) (*operator, error) {
@@ -148,6 +150,13 @@ func generatePath(tr tokenReader) (*path, error) {
 			q.operators = append(q.operators, &operator{typ: opTypeNameWild})
 		case pathValue:
 			q.captureEndValue = true
+		case pathWhere:
+		case pathExpression:
+			if len(q.operators) == 0 {
+				return nil, errors.New("Cannot add where clause on last key")
+			}
+			last := q.operators[len(q.operators)-1]
+			last.whereClause = p.val
 		case pathError:
 			return q, errors.New(string(p.val))
 		}

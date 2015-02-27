@@ -57,6 +57,7 @@ All paths start from the root node `$`.  Similar to getting properties in a Java
 `[n:]` = Nth index to end of array  
 `[*]` = wildcard index of array  
 `+` = get value at end of path  
+`?(expression)` = where clause
 
   
 Example: 
