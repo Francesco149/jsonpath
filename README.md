@@ -7,23 +7,31 @@ The evaluator can be initialized with several paths, so you can retrieve multipl
 For each value returned by a path, you'll also get the keys & indexes needed to reach that value.  Use the `keys` flag to view this in the CLI.  The Go package will return an `[]interface{}` of length `n` with indexes `0 - (n-2)` being the keys and the value at index `n-1`.  
   
 ### CLI   
-`go get github.com/NodePrime/jsonpath/cli/jsonpath`  
-`jsonpath [-file="FILEPATH"] [-json="{...}"] [-keys] -path='PATH'` 
+```shell
+go get github.com/NodePrime/jsonpath/cli/jsonpath
+cat yourData.json | jsonpath -k -p '$.Items[*].title+'
+```
 
 ##### Usage  
-  `-f, --file="": Path to json file  
-  -j, --json="": JSON text  
+```shell
+-f, --file="": Path to json file  
+-j, --json="": JSON text  
 -k, --keys=false: Print keys & indexes that lead to value  
--p, --path=[]: One or more paths to target in JSON`  
+-p, --path=[]: One or more paths to target in JSON
+```
 
   
 ### Go Package  
 go get github.com/NodePrime/jsonpath  
   
-`eval, err := jsonpath.GetPathsInBytes(json []byte, pathStrings ...string) (*jsonpath.eval, error)`  
-or  
-`eval, err := jsonpath.GetPathsInReader(r io.Reader, pathStrings ...string) (*jsonpath.eval, error)`  
-  
+```go
+eval, err := jsonpath.GetPathsInBytes(json []byte, pathStrings ...string) (*jsonpath.eval, error)
+```
+or 
+```go
+eval, err := jsonpath.GetPathsInReader(r io.Reader, pathStrings ...string) (*jsonpath.eval, error)
+```
+
 then
 ```go
 for r := range eval.Results {
