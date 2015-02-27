@@ -85,7 +85,7 @@ Example:
 	
 Example Paths:   
 *CLI*  
-`jsonpath -file=example.json -path='$.Items[*].tags[*]+' -keys`  
+`jsonpath --file=example.json --path='$.Items[*].tags[*]+' --keys`  
 Items	0	tags	0	"comedy"  
 Items	0	tags	1	"shakespeare"  
 Items	0	tags	2	"play"  
