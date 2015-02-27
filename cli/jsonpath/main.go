@@ -24,7 +24,7 @@ func main() {
 	flag.Parse()
 
 	if len(paths) == 0 {
-		fmt.Println("Must specify one or more paths with the   -paths   flag")
+		fmt.Println("Must specify one or more paths with the --path flag")
 		os.Exit(1)
 	}
 
