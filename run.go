@@ -49,23 +49,36 @@ func Iterate(l lexer) {
 	}
 }
 
-func PrintResult(l Result, showPath bool) {
-	for i, v := range l {
-		if !showPath && i < len(l)-1 {
-			continue
-		}
-
-		switch v := v.(type) {
-		case []byte:
-			fmt.Printf("%s", v)
-		case int:
-			fmt.Printf("%d", v)
-		default:
-			fmt.Printf("%s", v)
-		}
-		if i < len(l)-1 {
+func PrintResult(r Result, showPath bool) {
+	printed := false
+	if showPath {
+		for _, k := range r.Keys {
+			switch v := k.(type) {
+			case int:
+				fmt.Printf("%d", v)
+			default:
+				fmt.Printf("%q", v)
+			}
 			fmt.Print("\t")
+			printed = true
+		}
+	} else if r.Value == nil {
+		if len(r.Keys) > 0 {
+			printed = true
+			switch v := r.Keys[len(r.Keys)-1].(type) {
+			case int:
+				fmt.Printf("%d", v)
+			default:
+				fmt.Printf("%q", v)
+			}
 		}
 	}
-	fmt.Println()
+
+	if r.Value != nil {
+		printed = true
+		fmt.Printf("%s", r.Value)
+	}
+	if printed {
+		fmt.Println()
+	}
 }

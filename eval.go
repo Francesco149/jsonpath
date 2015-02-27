@@ -6,7 +6,10 @@ import (
 	"fmt"
 )
 
-type Result []interface{}
+type Result struct {
+	Keys  []interface{}
+	Value []byte
+}
 
 type queryStateFn func(*query, *Item) queryStateFn
 
@@ -328,12 +331,13 @@ func pathEndValue(q *query, i *Item) queryStateFn {
 			q.buffer.Write(i.val)
 		}
 	} else {
+		r := Result{Keys: q.valLoc.toArray()}
 		if q.buffer.Len() > 0 {
 			val := make([]byte, q.buffer.Len())
 			copy(val, q.buffer.Bytes())
-			q.valLoc.push(val)
+			r.Value = val
 		}
-		q.state.Results <- q.valLoc.toArray()
+		q.state.Results <- r
 
 		q.valLoc = *newStack()
 		q.buffer.Truncate(0)
