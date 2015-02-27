@@ -2,20 +2,25 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/NodePrime/jsonpath"
+	flag "github.com/ogier/pflag"
 )
 
 func main() {
 	var paths pathSlice
-	filePtr := flag.String("file", "", "Path to json file")
-	jsonPtr := flag.String("json", "", "JSON text")
-	flag.Var(&paths, "path", "One or more paths to target in JSON")
-	showKeysPtr := flag.Bool("showKeys", false, "Print keys & indexes that arrive to value")
+	filePtr := flag.StringP("file", "f", "", "Path to json file")
+	jsonPtr := flag.StringP("json", "j", "", "JSON text")
+	flag.VarP(&paths, "path", "p", "One or more paths to target in JSON")
+	showKeysPtr := flag.BoolP("keys", "k", false, "Print keys & indexes that lead to value")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+		fmt.Fprintln(os.Stderr, "Pipe JSON to StdIn by not specifying --file or --json ")
+	}
 	flag.Parse()
 
 	if len(paths) == 0 {
