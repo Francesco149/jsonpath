@@ -113,3 +113,35 @@ func readerToArray(tr tokenReader) []Item {
 	}
 	return vals
 }
+
+// func print(q *query, i *Item) queryStateFn {
+// 	printLoc(q.state.location.toArray(), i.val)
+// 	return print
+// }
+
+// func printLoc(s []interface{}, vals ...interface{}) {
+// 	for _, s := range s {
+// 		switch v := s.(type) {
+// 		case []byte:
+// 			fmt.Printf("%s ", string(v))
+// 		default:
+// 			fmt.Printf("%v ", v)
+// 		}
+// 	}
+// 	for _, v := range vals {
+// 		switch i := v.(type) {
+// 		case []byte:
+// 			fmt.Printf("%s ", string(i))
+// 		default:
+// 			fmt.Printf("%v ", i)
+// 		}
+// 	}
+// 	fmt.Println("")
+// }
+
+// func printLevels(s []int) {
+// 	for _, s := range s {
+// 		fmt.Printf("%v ", jsonTokenNames[s])
+// 	}
+// 	fmt.Println("")
+// }
