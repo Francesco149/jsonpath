@@ -26,7 +26,7 @@ func TestValidJson(t *testing.T) {
 	as := assert.New(t)
 
 	for _, test := range jsonTests {
-		lexer := NewBytesLexer([]byte(test.input), JSON)
+		lexer := NewSliceLexer([]byte(test.input), JSON)
 		items := readerToArray(lexer)
 
 		as.True(typeIsEqual(items, test.items, true), "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
@@ -51,7 +51,7 @@ func TestMalformedJson(t *testing.T) {
 	as := assert.New(t)
 
 	for _, test := range errorJsonTests {
-		lexer := NewBytesLexer([]byte(test.input), JSON)
+		lexer := NewSliceLexer([]byte(test.input), JSON)
 		items := readerToArray(lexer)
 
 		as.True(typeIsEqual(items, test.items, false), "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
@@ -62,7 +62,7 @@ func TestMalformedJson(t *testing.T) {
 // 	as := assert.New(t)
 // 	wg := sync.WaitGroup{}
 
-// 	lexer := NewBytesLexer(`{"key":"value", "key2":{"ikey":3}, "key3":[1,2,3,4]}`)
+// 	lexer := NewSliceLexer(`{"key":"value", "key2":{"ikey":3}, "key3":[1,2,3,4]}`)
 // 	wg.Add(1)
 // 	go func() {
 // 		lexer.Run(JSON)
@@ -155,7 +155,7 @@ var examples = []string{
 func TestValidRealJson(t *testing.T) {
 	as := assert.New(t)
 	for _, json := range examples {
-		lexer := NewBytesLexer([]byte(json), JSON)
+		lexer := NewSliceLexer([]byte(json), JSON)
 		items := readerToArray(lexer)
 
 		for _, i := range items {

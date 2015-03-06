@@ -50,7 +50,7 @@ func TestLexerMethods(t *testing.T) {
 	as := assert.New(t)
 	input := `{"key" :"value"}`
 
-	sl := NewBytesLexer([]byte(input), JSON)
+	sl := NewSliceLexer([]byte(input), JSON)
 	testLexerMethods(sl, as)
 
 	r := strings.NewReader(input)
@@ -69,37 +69,37 @@ const (
 
 func BenchmarkUnmarshalMix(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleMix), b) }
 func BenchmarkDecodeMix(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleMix), b) }
-func BenchmarkBytesMix(b *testing.B)     { benchmarkBytesLexer([]byte(sampleMix), b) }
+func BenchmarkSliceMix(b *testing.B)     { benchmarkBytesLexer([]byte(sampleMix), b) }
 func BenchmarkReaderMix(b *testing.B)    { benchmarkReaderLexer([]byte(sampleMix), b) }
 
 func BenchmarkUnmarshalDigits(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleDigits), b) }
 func BenchmarkDecodeDigits(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleDigits), b) }
-func BenchmarkBytesDigits(b *testing.B)     { benchmarkBytesLexer([]byte(sampleDigits), b) }
+func BenchmarkSliceDigits(b *testing.B)     { benchmarkBytesLexer([]byte(sampleDigits), b) }
 func BenchmarkReaderDigits(b *testing.B)    { benchmarkReaderLexer([]byte(sampleDigits), b) }
 
 func BenchmarkUnmarshalStrings(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleStrings), b) }
 func BenchmarkDecodeStrings(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleStrings), b) }
-func BenchmarkBytesStrings(b *testing.B)     { benchmarkBytesLexer([]byte(sampleStrings), b) }
+func BenchmarkSliceStrings(b *testing.B)     { benchmarkBytesLexer([]byte(sampleStrings), b) }
 func BenchmarkReaderStrings(b *testing.B)    { benchmarkReaderLexer([]byte(sampleStrings), b) }
 
 func BenchmarkUnmarshalLiterals(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleLiterals), b) }
 func BenchmarkDecodeLiterals(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleLiterals), b) }
-func BenchmarkBytesLiterals(b *testing.B)     { benchmarkBytesLexer([]byte(sampleLiterals), b) }
+func BenchmarkSliceLiterals(b *testing.B)     { benchmarkBytesLexer([]byte(sampleLiterals), b) }
 func BenchmarkReaderLiterals(b *testing.B)    { benchmarkReaderLexer([]byte(sampleLiterals), b) }
 
 func BenchmarkUnmarshalArrays(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleArrays), b) }
 func BenchmarkDecodeArrays(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleArrays), b) }
-func BenchmarkBytesArrays(b *testing.B)     { benchmarkBytesLexer([]byte(sampleArrays), b) }
+func BenchmarkSliceArrays(b *testing.B)     { benchmarkBytesLexer([]byte(sampleArrays), b) }
 func BenchmarkReaderArrays(b *testing.B)    { benchmarkReaderLexer([]byte(sampleArrays), b) }
 
 func BenchmarkUnmarshalObjects(b *testing.B) { benchmarkStdUnmarshal([]byte(sampleObjects), b) }
 func BenchmarkDecodeObjects(b *testing.B)    { benchmarkStdLibDecode([]byte(sampleObjects), b) }
-func BenchmarkBytesObjects(b *testing.B)     { benchmarkBytesLexer([]byte(sampleObjects), b) }
+func BenchmarkSliceObjects(b *testing.B)     { benchmarkBytesLexer([]byte(sampleObjects), b) }
 func BenchmarkReaderObjects(b *testing.B)    { benchmarkReaderLexer([]byte(sampleObjects), b) }
 
 func TestBytesLexerReset(t *testing.T) {
 	as := assert.New(t)
-	lexer := NewBytesLexer([]byte(sampleMix), JSON)
+	lexer := NewSliceLexer([]byte(sampleMix), JSON)
 	sitems := readerToArray(lexer)
 
 	lexer.reset()
@@ -123,7 +123,7 @@ func TestReaderLexerReset(t *testing.T) {
 
 func TestLexersAgainstEachOther(t *testing.T) {
 	as := assert.New(t)
-	slexer := NewBytesLexer([]byte(sampleMix), JSON)
+	slexer := NewSliceLexer([]byte(sampleMix), JSON)
 	sitems := readerToArray(slexer)
 
 	reader := strings.NewReader(sampleMix)
@@ -141,7 +141,7 @@ func TestLargeJSON(t *testing.T) {
 		return
 	}
 
-	lexer := NewBytesLexer(input, JSON)
+	lexer := NewSliceLexer(input, JSON)
 	for {
 		i, ok := lexer.next()
 		if i.typ == jsonError {
@@ -155,7 +155,7 @@ func TestLargeJSON(t *testing.T) {
 }
 
 func benchmarkBytesLexer(input []byte, b *testing.B) {
-	lexer := NewBytesLexer(input, JSON)
+	lexer := NewSliceLexer(input, JSON)
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for {
@@ -245,7 +245,7 @@ func BenchmarkStdLibDecodeLarge(b *testing.B) {
 	}
 }
 
-func BenchmarkBytesLexerLarge(b *testing.B) {
+func BenchmarkSliceLexerLarge(b *testing.B) {
 	input, err := ioutil.ReadFile("large.test")
 	if err != nil {
 		b.SkipNow()

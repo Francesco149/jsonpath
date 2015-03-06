@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-type rlexer struct {
+type readerLexer struct {
 	lex
 	bufInput *bufio.Reader
 	input    io.Reader
@@ -17,8 +17,8 @@ type rlexer struct {
 	lexeme   *bytes.Buffer
 }
 
-func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
-	l := rlexer{
+func NewReaderLexer(rr io.Reader, initial stateFn) *readerLexer {
+	l := readerLexer{
 		input:    rr,
 		bufInput: bufio.NewReader(rr),
 		nextByte: noValue,
@@ -28,7 +28,7 @@ func NewReaderLexer(rr io.Reader, initial stateFn) *rlexer {
 	return &l
 }
 
-func (l *rlexer) take() int {
+func (l *readerLexer) take() int {
 	if l.nextByte == noValue {
 		l.peek()
 	}
@@ -39,7 +39,7 @@ func (l *rlexer) take() int {
 	return nr
 }
 
-func (l *rlexer) takeString() error {
+func (l *readerLexer) takeString() error {
 	cur := l.take()
 	if cur != '"' {
 		return fmt.Errorf("Expected \" as start of string instead of %#U", cur)
@@ -71,7 +71,7 @@ looper:
 	return nil
 }
 
-func (l *rlexer) peek() int {
+func (l *readerLexer) peek() int {
 	if l.nextByte != noValue {
 		return l.nextByte
 	}
@@ -86,7 +86,7 @@ func (l *rlexer) peek() int {
 	return l.nextByte
 }
 
-func (l *rlexer) emit(t int) {
+func (l *readerLexer) emit(t int) {
 	l.setItem(t, l.pos, l.lexeme.Bytes())
 	l.pos += Pos(l.lexeme.Len())
 	l.hasItem = true
@@ -111,18 +111,18 @@ func (l *rlexer) emit(t int) {
 	}
 }
 
-func (l *rlexer) setItem(typ int, pos Pos, val []byte) {
+func (l *readerLexer) setItem(typ int, pos Pos, val []byte) {
 	l.item.typ = typ
 	l.item.pos = pos
 	l.item.val = val
 }
 
-func (l *rlexer) ignore() {
+func (l *readerLexer) ignore() {
 	l.pos += Pos(l.lexeme.Len())
 	l.lexeme.Reset()
 }
 
-func (l *rlexer) next() (*Item, bool) {
+func (l *readerLexer) next() (*Item, bool) {
 	l.lexeme.Reset()
 	for {
 		if l.currentStateFn == nil {
@@ -139,14 +139,14 @@ func (l *rlexer) next() (*Item, bool) {
 	return &l.item, false
 }
 
-func (l *rlexer) errorf(format string, args ...interface{}) stateFn {
+func (l *readerLexer) errorf(format string, args ...interface{}) stateFn {
 	l.setItem(lexError, l.pos, []byte(fmt.Sprintf(format, args...)))
 	l.lexeme.Truncate(0)
 	l.hasItem = true
 	return nil
 }
 
-func (l *rlexer) reset() {
+func (l *readerLexer) reset() {
 	l.bufInput.Reset(l.input)
 	l.lexeme.Reset()
 	l.nextByte = noValue

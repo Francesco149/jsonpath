@@ -6,7 +6,10 @@ import (
 	"fmt"
 )
 
-type Result []interface{}
+type Result struct {
+	Keys  []interface{}
+	Value []byte
+}
 
 type queryStateFn func(*query, *Item) queryStateFn
 
@@ -62,7 +65,7 @@ func newEvaluation(tr tokenReader, paths ...*path) *eval {
 
 	// Determine whether to copy item values from lexer
 	switch tr.(type) {
-	case *rlexer:
+	case *readerLexer:
 		e.copyValues = true
 	default:
 		e.copyValues = false
@@ -72,8 +75,7 @@ func newEvaluation(tr tokenReader, paths ...*path) *eval {
 }
 
 func (e *eval) run() {
-	// f, _ := os.Create("/tmp/trace")
-	// pprof.StartCPUProfile(f)
+	// TODO: Replace this goroutine and eval.Results with user-cranked machine
 	for {
 		t, ok := e.tr.next()
 		if !ok || e.state == nil {
@@ -103,9 +105,6 @@ func (e *eval) run() {
 			break
 		}
 	}
-
-	// pprof.StopCPUProfile()
-
 	close(e.Results)
 }
 
@@ -166,8 +165,6 @@ func evalObjectValue(e *eval, i *Item) evalStateFn {
 
 	switch i.typ {
 	case jsonNull, jsonNumber, jsonString, jsonBool:
-		// printLoc(e.location.toArray())
-		// fmt.Println("Value: ", string(i.val))
 		return evalObjectAfterValue
 	case jsonBraceLeft:
 		e.levelStack.push(i.typ)
@@ -300,11 +297,6 @@ func evalError(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func print(q *query, i *Item) queryStateFn {
-	printLoc(q.state.location.toArray(), i.val)
-	return print
-}
-
 func pathMatchNextOp(q *query, i *Item) queryStateFn {
 	if q.last > q.state.location.len()-1 {
 		q.last -= 1
@@ -339,12 +331,13 @@ func pathEndValue(q *query, i *Item) queryStateFn {
 			q.buffer.Write(i.val)
 		}
 	} else {
+		r := Result{Keys: q.valLoc.toArray()}
 		if q.buffer.Len() > 0 {
 			val := make([]byte, q.buffer.Len())
 			copy(val, q.buffer.Bytes())
-			q.valLoc.push(val)
+			r.Value = val
 		}
-		q.state.Results <- q.valLoc.toArray()
+		q.state.Results <- r
 
 		q.valLoc = *newStack()
 		q.buffer.Truncate(0)
@@ -374,31 +367,4 @@ func itemMatchOperator(loc interface{}, i *Item, op *operator) bool {
 		}
 	}
 	return false
-}
-
-func printLoc(s []interface{}, vals ...interface{}) {
-	for _, s := range s {
-		switch v := s.(type) {
-		case []byte:
-			fmt.Printf("%s ", string(v))
-		default:
-			fmt.Printf("%v ", v)
-		}
-	}
-	for _, v := range vals {
-		switch i := v.(type) {
-		case []byte:
-			fmt.Printf("%s ", string(i))
-		default:
-			fmt.Printf("%v ", i)
-		}
-	}
-	fmt.Println("")
-}
-
-func printLevels(s []int) {
-	for _, s := range s {
-		fmt.Printf("%v ", jsonTokenNames[s])
-	}
-	fmt.Println("")
 }
