@@ -7,19 +7,19 @@ import (
 )
 
 var jsonTests = []lexTest{
-	{"empty object", `{}`, []Item{i(jsonBraceLeft), i(jsonBraceRight)}},
-	{"empty array", `[]`, []Item{i(jsonBracketLeft), i(jsonBracketRight)}},
-	{"key string", `{"key" :"value"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
-	{"multiple pairs", `{"key" :"value","key2" :"value"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonComma), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight)}},
-	{"key number", `{"key" : 12.34e+56}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNumber), i(jsonBraceRight)}},
-	{"key true", `{"key" :true}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
-	{"key false", `{"key" :false}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBool), i(jsonBraceRight)}},
-	{"key null", `{"key" :null}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonNull), i(jsonBraceRight)}},
-	{"key arrayOf number", `{"key" :[23]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
-	{"key array", `{"key" :[23,"45",67]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonString), i(jsonComma), i(jsonNumber), i(jsonBracketRight), i(jsonBraceRight)}},
-	{"key array", `{"key" :["45",{}]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonString), i(jsonComma), i(jsonBraceLeft), i(jsonBraceRight), i(jsonBracketRight), i(jsonBraceRight)}},
-	{"key nestedObject", `{"key" :{"innerkey":"value"}}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonString), i(jsonBraceRight), i(jsonBraceRight)}},
-	{"key nestedArray", `[1,["a","b"]]`, []Item{i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonBracketLeft), i(jsonString), i(jsonComma), i(jsonString), i(jsonBracketRight), i(jsonBracketRight)}},
+	{"empty object", `{}`, []int{jsonBraceLeft, jsonBraceRight}},
+	{"empty array", `[]`, []int{jsonBracketLeft, jsonBracketRight}},
+	{"key string", `{"key" :"value"}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonString, jsonBraceRight}},
+	{"multiple pairs", `{"key" :"value","key2" :"value"}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonString, jsonComma, jsonKey, jsonColon, jsonString, jsonBraceRight}},
+	{"key number", `{"key" : 12.34e+56}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonNumber, jsonBraceRight}},
+	{"key true", `{"key" :true}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBool, jsonBraceRight}},
+	{"key false", `{"key" :false}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBool, jsonBraceRight}},
+	{"key null", `{"key" :null}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonNull, jsonBraceRight}},
+	{"key arrayOf number", `{"key" :[23]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonNumber, jsonBracketRight, jsonBraceRight}},
+	{"key array", `{"key" :[23,"45",67]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonNumber, jsonComma, jsonString, jsonComma, jsonNumber, jsonBracketRight, jsonBraceRight}},
+	{"key array", `{"key" :["45",{}]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonString, jsonComma, jsonBraceLeft, jsonBraceRight, jsonBracketRight, jsonBraceRight}},
+	{"key nestedObject", `{"key" :{"innerkey":"value"}}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBraceLeft, jsonKey, jsonColon, jsonString, jsonBraceRight, jsonBraceRight}},
+	{"key nestedArray", `[1,["a","b"]]`, []int{jsonBracketLeft, jsonNumber, jsonComma, jsonBracketLeft, jsonString, jsonComma, jsonString, jsonBracketRight, jsonBracketRight}},
 }
 
 func TestValidJson(t *testing.T) {
@@ -27,24 +27,24 @@ func TestValidJson(t *testing.T) {
 
 	for _, test := range jsonTests {
 		lexer := NewSliceLexer([]byte(test.input), JSON)
-		items := readerToArray(lexer)
+		types := itemsToTypes(readerToArray(lexer))
 
-		as.True(typeIsEqual(items, test.items, true), "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
+		as.Equal(types, test.tokenTypes, "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, jsonTokenNames), typesDescription(test.tokenTypes, jsonTokenNames))
 	}
 }
 
 var errorJsonTests = []lexTest{
-	{"Missing end brace", `{`, []Item{i(jsonBraceLeft), i(jsonError)}},
-	{"Missing start brace", `}`, []Item{i(jsonError)}},
-	{"Missing key start quote", `{key":true}`, []Item{i(jsonBraceLeft), i(jsonError)}},
-	{"Missing key end quote", `{"key:true}`, []Item{i(jsonBraceLeft), i(jsonError)}},
-	{"Missing colon", `{"key"true}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonError)}},
-	{"Missing value", `{"key":}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonError)}},
-	{"Missing string start quote", `{"key":test"}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonError)}},
-	{"Missing embedded array bracket", `{"key":[}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonError)}},
-	{"Missing values in array", `{"key":[,]`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonError)}},
-	{"Missing value after comma", `{"key":[343,]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonComma), i(jsonError)}},
-	{"Missing comma in array", `{"key":[234 424]}`, []Item{i(jsonBraceLeft), i(jsonKey), i(jsonColon), i(jsonBracketLeft), i(jsonNumber), i(jsonError)}},
+	{"Missing end brace", `{`, []int{jsonBraceLeft, jsonError}},
+	{"Missing start brace", `}`, []int{jsonError}},
+	{"Missing key start quote", `{key":true}`, []int{jsonBraceLeft, jsonError}},
+	{"Missing key end quote", `{"key:true}`, []int{jsonBraceLeft, jsonError}},
+	{"Missing colon", `{"key"true}`, []int{jsonBraceLeft, jsonKey, jsonError}},
+	{"Missing value", `{"key":}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonError}},
+	{"Missing string start quote", `{"key":test"}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonError}},
+	{"Missing embedded array bracket", `{"key":[}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonError}},
+	{"Missing values in array", `{"key":[,]`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonError}},
+	{"Missing value after comma", `{"key":[343,]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonNumber, jsonComma, jsonError}},
+	{"Missing comma in array", `{"key":[234 424]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonNumber, jsonError}},
 }
 
 func TestMalformedJson(t *testing.T) {
@@ -52,10 +52,18 @@ func TestMalformedJson(t *testing.T) {
 
 	for _, test := range errorJsonTests {
 		lexer := NewSliceLexer([]byte(test.input), JSON)
-		items := readerToArray(lexer)
+		types := itemsToTypes(readerToArray(lexer))
 
-		as.True(typeIsEqual(items, test.items, false), "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, itemsDescription(items, jsonTokenNames), itemsDescription(test.items, jsonTokenNames))
+		as.Equal(types, test.tokenTypes, "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, jsonTokenNames), typesDescription(test.tokenTypes, jsonTokenNames))
 	}
+}
+
+func itemsToTypes(items []Item) []int {
+	types := make([]int, len(items))
+	for i, item := range items {
+		types[i] = item.typ
+	}
+	return types
 }
 
 // func TestEarlyTerminationForJSON(t *testing.T) {

@@ -75,3 +75,11 @@ func itemDescription(item *Item, nameMap map[int]string) string {
 	}
 	return val
 }
+
+func typesDescription(types []int, nameMap map[int]string) []string {
+	vals := make([]string, len(types))
+	for i, val := range types {
+		vals[i] = nameMap[val]
+	}
+	return vals
+}
