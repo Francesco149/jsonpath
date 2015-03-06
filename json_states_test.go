@@ -7,19 +7,19 @@ import (
 )
 
 var jsonTests = []lexTest{
-	{"empty object", `{}`, []int{jsonBraceLeft, jsonBraceRight}},
-	{"empty array", `[]`, []int{jsonBracketLeft, jsonBracketRight}},
-	{"key string", `{"key" :"value"}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonString, jsonBraceRight}},
-	{"multiple pairs", `{"key" :"value","key2" :"value"}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonString, jsonComma, jsonKey, jsonColon, jsonString, jsonBraceRight}},
-	{"key number", `{"key" : 12.34e+56}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonNumber, jsonBraceRight}},
-	{"key true", `{"key" :true}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBool, jsonBraceRight}},
-	{"key false", `{"key" :false}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBool, jsonBraceRight}},
-	{"key null", `{"key" :null}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonNull, jsonBraceRight}},
-	{"key arrayOf number", `{"key" :[23]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonNumber, jsonBracketRight, jsonBraceRight}},
-	{"key array", `{"key" :[23,"45",67]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonNumber, jsonComma, jsonString, jsonComma, jsonNumber, jsonBracketRight, jsonBraceRight}},
-	{"key array", `{"key" :["45",{}]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonString, jsonComma, jsonBraceLeft, jsonBraceRight, jsonBracketRight, jsonBraceRight}},
-	{"key nestedObject", `{"key" :{"innerkey":"value"}}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBraceLeft, jsonKey, jsonColon, jsonString, jsonBraceRight, jsonBraceRight}},
-	{"key nestedArray", `[1,["a","b"]]`, []int{jsonBracketLeft, jsonNumber, jsonComma, jsonBracketLeft, jsonString, jsonComma, jsonString, jsonBracketRight, jsonBracketRight}},
+	{"empty object", `{}`, []int{jsonBraceLeft, jsonBraceRight, jsonEOF}},
+	{"empty array", `[]`, []int{jsonBracketLeft, jsonBracketRight, jsonEOF}},
+	{"key string", `{"key" :"value"}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonString, jsonBraceRight, jsonEOF}},
+	{"multiple pairs", `{"key" :"value","key2" :"value"}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonString, jsonComma, jsonKey, jsonColon, jsonString, jsonBraceRight, jsonEOF}},
+	{"key number", `{"key" : 12.34e+56}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonNumber, jsonBraceRight, jsonEOF}},
+	{"key true", `{"key" :true}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBool, jsonBraceRight, jsonEOF}},
+	{"key false", `{"key" :false}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBool, jsonBraceRight, jsonEOF}},
+	{"key null", `{"key" :null}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonNull, jsonBraceRight, jsonEOF}},
+	{"key arrayOf number", `{"key" :[23]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonNumber, jsonBracketRight, jsonBraceRight, jsonEOF}},
+	{"key array", `{"key" :[23,"45",67]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonNumber, jsonComma, jsonString, jsonComma, jsonNumber, jsonBracketRight, jsonBraceRight, jsonEOF}},
+	{"key array", `{"key" :["45",{}]}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBracketLeft, jsonString, jsonComma, jsonBraceLeft, jsonBraceRight, jsonBracketRight, jsonBraceRight, jsonEOF}},
+	{"key nestedObject", `{"key" :{"innerkey":"value"}}`, []int{jsonBraceLeft, jsonKey, jsonColon, jsonBraceLeft, jsonKey, jsonColon, jsonString, jsonBraceRight, jsonBraceRight, jsonEOF}},
+	{"key nestedArray", `[1,["a","b"]]`, []int{jsonBracketLeft, jsonNumber, jsonComma, jsonBracketLeft, jsonString, jsonComma, jsonString, jsonBracketRight, jsonBracketRight, jsonEOF}},
 }
 
 func TestValidJson(t *testing.T) {
