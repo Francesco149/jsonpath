@@ -275,9 +275,9 @@ func BenchmarkReaderLexerLarge(b *testing.B) {
 }
 
 type lexTest struct {
-	name  string
-	input string
-	items []Item
+	name       string
+	input      string
+	tokenTypes []int
 }
 
 func i(tokenType int) Item {

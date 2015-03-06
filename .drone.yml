@@ -10,7 +10,6 @@ env:
   - BUILD_ID=$DRONE_BUILD_NUMBER
   - GIT_COMMIT=$DRONE_COMMIT
   - GIT_BRANCH=$DRONE_BRANCH
-  - JENKINS_URL="https://drone.nodpeprime.net:8282"
 script:
     #################################################################
     # Commands to execute CI build

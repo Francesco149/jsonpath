@@ -282,7 +282,7 @@ func setPrevIndex(e *eval) {
 }
 
 func evalRootEnd(e *eval, i *Item) evalStateFn {
-	if i != nil {
+	if i.typ != jsonEOF {
 		if i.typ == jsonError {
 			evalError(e, i)
 		} else {

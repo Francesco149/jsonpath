@@ -87,13 +87,13 @@ Example:
 Example Paths:   
 *CLI*  
 `jsonpath --file=example.json --path='$.Items[*].tags[*]+' --keys`  
-Items	0	tags	0	"comedy"  
-Items	0	tags	1	"shakespeare"  
-Items	0	tags	2	"play"  
-Items	1	tags	0	"french"  
-Items	1	tags	1	"revolution"  
-Items	1	tags	2	"london"  
-
+"Items"	0	"tags"	0	"comedy"  
+"Items"	0	"tags"	1	"shakespeare"  
+"Items"	0	"tags"	2	"play"  
+"Items"	1	"tags"	0	"french"  
+"Items"	1	"tags"	1	"revolution"  
+"Items"	1	"tags"	2	"london"  
+  
 *Package*  
 `$.Items[*].title+`   
 ... "A Midsummer Night's Dream"   
@@ -118,7 +118,3 @@ Items	1	tags	2	"london"
 *Expressions*  
 `?(expression)`  
 Ex: `$.Items[*]?(title=='A Tale of Two Cities').tags+`  
-  
-*Efficient Reader Lexer*  
-Paths tell lexer whether it should be appending bytes to the lexeme buffer  
-(might not be a huge benefit)  
