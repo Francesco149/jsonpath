@@ -26,7 +26,7 @@ func takeExponent(l lexer) error {
 	return nil
 }
 
-func takeNumeric(l lexer) error {
+func takeJSONNumeric(l lexer) error {
 	cur := l.take()
 	switch cur {
 	case '-':

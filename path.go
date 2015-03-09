@@ -30,7 +30,8 @@ type operator struct {
 
 	keyStrings map[string]struct{}
 
-	whereClause []byte
+	whereClauseBytes []byte
+	// whereClause
 }
 
 func genIndexKey(tr tokenReader) (*operator, error) {
@@ -111,7 +112,18 @@ func parsePath(pathString string) (*path, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	p.stringValue = pathString
+
+	//Generate dependent paths
+	for _, op := range p.operators {
+		if len(op.whereClauseBytes) > 0 {
+			trimmed := op.whereClauseBytes[1 : len(op.whereClauseBytes)-1]
+			whereLexer := NewSliceLexer(trimmed, EXPRESSION)
+			items := readerToArray(whereLexer)
+			_ = items
+		}
+	}
 	return p, nil
 }
 
@@ -156,7 +168,10 @@ func generatePath(tr tokenReader) (*path, error) {
 				return nil, errors.New("Cannot add where clause on last key")
 			}
 			last := q.operators[len(q.operators)-1]
-			last.whereClause = p.val
+			if last.whereClauseBytes != nil {
+				return nil, errors.New("Expression on last key already set")
+			}
+			last.whereClauseBytes = p.val
 		case pathError:
 			return q, errors.New(string(p.val))
 		}
