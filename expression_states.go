@@ -107,6 +107,22 @@ func lexExprText(l lexer, state *intStack) stateFn {
 			l.emit(exprOpGt)
 		}
 		next = lexExprText
+	case '&':
+		l.take()
+		cur = l.take()
+		if cur != '&' {
+			return l.errorf("Expected double & instead of %#U", cur)
+		}
+		l.emit(exprOpAnd)
+		next = lexExprText
+	case '|':
+		l.take()
+		cur = l.take()
+		if cur != '|' {
+			return l.errorf("Expected double | instead of %#U", cur)
+		}
+		l.emit(exprOpOr)
+		next = lexExprText
 	case '@', '$':
 		l.take()
 		takePath(l)
@@ -124,9 +140,19 @@ func lexExprText(l lexer, state *intStack) stateFn {
 		takeNumeric(l)
 		l.emit(exprNumber)
 		next = lexExprText
+	case 't':
+		takeExactSequence(l, bytesTrue)
+		l.emit(exprBool)
+		next = lexExprText
+	case 'f':
+		takeExactSequence(l, bytesFalse)
+		l.emit(exprBool)
+		next = lexExprText
 	case eof:
 		l.emit(exprEOF)
 		// next = nil
+	default:
+		return l.errorf("Unrecognized sequence in expression: %#U", cur)
 	}
 	return next
 }
