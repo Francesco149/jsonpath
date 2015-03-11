@@ -8,24 +8,96 @@ import (
 
 var boolTests = []struct {
 	input    string
-	fields   map[string]interface{}
+	fields   map[string]Item
 	expected bool
 }{
-	{"true && false", nil, false},
+	// &&
+	{"true && true", nil, true},
+	{"false && true", nil, false},
+	{"false && false", nil, false},
+
+	// ||
+	{"true || true", nil, true},
+	{"true || false", nil, true},
+	{"false ||  false", nil, false},
+
+	// LT
 	{"10 < 20", nil, true},
-	{"10 < 20 && 20 < 30", nil, true},
+	{"10 < 10", nil, false},
+	{"100 < 20", nil, false},
+	{"@a < 50", map[string]Item{"@a": genValue(`49`, jsonNumber)}, true},
+	{"@a < 50", map[string]Item{"@a": genValue(`50`, jsonNumber)}, false},
+	{"@a < 50", map[string]Item{"@a": genValue(`51`, jsonNumber)}, false},
+
+	// LE
 	{"10 <= 20", nil, true},
+	{"10 <= 10", nil, true},
+	{"100 <= 20", nil, false},
+	{"@a <= 54", map[string]Item{"@a": genValue(`53`, jsonNumber)}, true},
+	{"@a <= 54", map[string]Item{"@a": genValue(`54`, jsonNumber)}, true},
+	{"@a <= 54", map[string]Item{"@a": genValue(`55`, jsonNumber)}, false},
+
+	// GT
+	{"30 > 20", nil, true},
+	{"20 > 20", nil, false},
 	{"10 > 20", nil, false},
+	{"@a > 50", map[string]Item{"@a": genValue(`49`, jsonNumber)}, false},
+	{"@a > 50", map[string]Item{"@a": genValue(`50`, jsonNumber)}, false},
+	{"@a > 50", map[string]Item{"@a": genValue(`51`, jsonNumber)}, true},
+
+	// GE
+	{"30 >= 20", nil, true},
 	{"20 >= 20", nil, true},
-	{"20 > 20 || false", nil, false},
-	//{"20 >= 20 || 2 == 2", nil, true},
-	// {"20 > 5min && 5min < 13 && 5min > 1.99994", map[string]string{"5min": "10.23423"}, true},
-	// {"20 < 5min || 5min < 13", map[string]string{"5min": "15.3423"}, false},
+	{"10 >= 20", nil, false},
+	{"@a >= 50", map[string]Item{"@a": genValue(`49`, jsonNumber)}, false},
+	{"@a >= 50", map[string]Item{"@a": genValue(`50`, jsonNumber)}, true},
+	{"@a >= 50", map[string]Item{"@a": genValue(`51`, jsonNumber)}, true},
+
+	// Equality
+	{"20 == 20", nil, true},
+	{"20 == 21", nil, false},
+	{"true == true", nil, true},
+	{"true == false", nil, false},
+	{"@a == @b", map[string]Item{"@a": genValue(`"one"`, jsonString), "@b": genValue(`"one"`, jsonString)}, true},
+	{"@a == @b", map[string]Item{"@a": genValue(`"one"`, jsonString), "@b": genValue(`"two"`, jsonString)}, false},
+	// {"@a == @b", map[string]Item{"@a": genValue(`"one"`, jsonString), "@b": genValue("3.4", jsonNumber)}, false},
+	{`"fire" == "fire"`, nil, true},
+	{`"fire" == "water"`, nil, false},
+	{`@a == "toronto"`, map[string]Item{"@a": genValue(`"toronto"`, jsonString)}, true},
+	{`@a == "toronto"`, map[string]Item{"@a": genValue(`"los angeles"`, jsonString)}, false},
+	{`@a == 3.4`, map[string]Item{"@a": genValue(`3.4`, jsonNumber)}, true},
+	{`@a == 3.4`, map[string]Item{"@a": genValue(`3.41`, jsonNumber)}, false},
+	{`@a == null`, map[string]Item{"@a": genValue(`null`, jsonNull)}, true},
+	// {`@a == null`, map[string]Item{"@a": genValue(`3.41`, jsonNumber)}, false},
+
+	// TODO: NEQ
+
+	// Plus
+	{"20 + 7 == 27", nil, true},
+	{"20 + 6 == 27", nil, false},
+	{"20 + 6.999999 == 27", nil, false},
+
+	// Minus
+	{"20 - 7 == 13", nil, true},
+	{"20 - 6 == 13", nil, false},
+	{"20 - 6.999999 == 13", nil, false},
+
+	// Mix
+	{"20 >= 20 || 2 == 2", nil, true},
+	{"20 > $.test && $.test < 13 && $.test > 1.99994", map[string]Item{"$.test": genValue(`10.23423`, jsonNumber)}, true},
+	{"20 > $.test && $.test < 13 && $.test > 1.99994", map[string]Item{"$.test": genValue(`15.3423`, jsonNumber)}, false},
+}
+
+func genValue(val string, typ int) Item {
+	return Item{
+		val: []byte(val),
+		typ: typ,
+	}
 }
 
 func TestBoolExpressions(t *testing.T) {
 	as := assert.New(t)
-	emptyFields := map[string]interface{}{}
+	emptyFields := map[string]Item{}
 
 	for _, test := range boolTests {
 		if test.fields == nil {
@@ -39,7 +111,7 @@ func TestBoolExpressions(t *testing.T) {
 		items_post, err := infixToPostFix(items)
 		if as.NoError(err, "Could not transform to postfix\nTest: %q", test.input) {
 			val, err := evaluatePostFix(items_post, test.fields)
-			if as.NoError(err, "Could not evaluate postfix\nTest: %q\nError:%q", test.input, err) {
+			if as.NoError(err, "Could not evaluate postfix\nTest Input: %q\nTest Values:%q\nError:%q", test.input, test.fields, err) {
 				as.Equal(test.expected, val, "%q  -> Actual: %t   Expected %t\n", test.input, val, test.expected)
 			}
 		}

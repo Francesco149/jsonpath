@@ -10,4 +10,5 @@ const (
 var (
 	bytesTrue  = []byte{'t', 'r', 'u', 'e'}
 	bytesFalse = []byte{'f', 'a', 'l', 's', 'e'}
+	bytesNull  = []byte{'n', 'u', 'l', 'l'}
 )

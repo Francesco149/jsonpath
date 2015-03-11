@@ -8,6 +8,8 @@ const (
 	exprNumber
 	exprPath
 	exprBool
+	exprNull
+	exprString
 
 	exprOperators
 	exprOpEq
@@ -36,6 +38,8 @@ var exprTokenNames = map[int]string{
 	exprNumber:     "NUMBER",
 	exprPath:       "PATH",
 	exprBool:       "BOOL",
+	exprNull:       "NULL",
+	exprString:     "STRING",
 	exprOpEq:       "==",
 	exprOpNeq:      "!=",
 	exprOpLt:       "<",
@@ -147,6 +151,17 @@ func lexExprText(l lexer, state *intStack) stateFn {
 	case 'f':
 		takeExactSequence(l, bytesFalse)
 		l.emit(exprBool)
+		next = lexExprText
+	case 'n':
+		takeExactSequence(l, bytesNull)
+		l.emit(exprNull)
+		next = lexExprText
+	case '"':
+		err := l.takeString()
+		if err != nil {
+			return l.errorf("Could not take string because %q", err)
+		}
+		l.emit(exprString)
 		next = lexExprText
 	case eof:
 		l.emit(exprEOF)

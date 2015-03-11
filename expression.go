@@ -3,6 +3,8 @@ package jsonpath
 import (
 	"errors"
 	"fmt"
+	"math"
+	"reflect"
 	"strconv"
 )
 
@@ -11,6 +13,8 @@ const (
 	exprErrorBadExpression     = "Bad Expression"
 	exprErrorFinalValueNotBool = "Expression evaluated to a non-bool"
 	exprErrorNotEnoughOperands = "Not enough operands for operation %q"
+	exprErrorValueNotFound     = "Value not found"
+	exprErrorPathValueBadType  = "Value found at end of path cannot be compared"
 	exprErrorBadValueForType   = "Bad value %q for type %q"
 	exprErrorBadOperandType    = "Operand type expected to be %q for operation %q"
 )
@@ -97,7 +101,7 @@ func infixToPostFix(items []Item) (out []Item, err error) {
 	return
 }
 
-func evaluatePostFix(items []Item, values map[string]interface{}) (bool, error) {
+func evaluatePostFix(items []Item, pathValues map[string]Item) (bool, error) {
 	s := newStack()
 
 	if len(items) == 0 {
@@ -121,7 +125,29 @@ func evaluatePostFix(items []Item, values map[string]interface{}) (bool, error) 
 			}
 			s.push(val)
 		case exprPath:
-			return false, fmt.Errorf("VALUES NOT SUPPORTED YET")
+			// TODO: Handle datatypes of JSON
+			i, ok := pathValues[string(item.val)]
+			if !ok {
+				return false, fmt.Errorf(exprErrorValueNotFound)
+			}
+			switch i.typ {
+			case jsonNull:
+				s.push(nil)
+			case jsonNumber:
+				val_float, err := strconv.ParseFloat(string(i.val), 64)
+				if err != nil {
+					return false, fmt.Errorf(exprErrorPathValueBadType)
+				}
+				s.push(val_float)
+			case jsonKey, jsonString:
+				s.push(i.val)
+			default:
+				return false, fmt.Errorf(exprErrorPathValueBadType)
+			}
+		case exprString:
+			s.push(item.val)
+		case exprNull:
+			s.push(nil)
 
 		// OPERATORS
 		case exprOpAnd:
@@ -131,6 +157,38 @@ func evaluatePostFix(items []Item, values map[string]interface{}) (bool, error) 
 			}
 
 			s.push(a && b)
+		case exprOpEq:
+			p, ok := s.peek()
+			if !ok {
+				return false, fmt.Errorf(exprErrorNotEnoughOperands, exprTokenNames[item.typ])
+			}
+			switch p.(type) {
+			case nil:
+				err := take2Null(s, item.typ)
+				if err != nil {
+					return false, err
+				} else {
+					s.push(true)
+				}
+			case bool:
+				a, b, err := take2Bool(s, item.typ)
+				if err != nil {
+					return false, err
+				}
+				s.push(a == b)
+			case float64:
+				a, b, err := take2Float(s, item.typ)
+				if err != nil {
+					return false, err
+				}
+				s.push(a == b)
+			case []byte:
+				a, b, err := take2ByteSlice(s, item.typ)
+				if err != nil {
+					return false, err
+				}
+				s.push(testByteSliceEquality(a, b))
+			}
 		case exprOpOr:
 			a, b, err := take2Bool(s, item.typ)
 			if err != nil {
@@ -166,6 +224,56 @@ func evaluatePostFix(items []Item, values map[string]interface{}) (bool, error) 
 			}
 
 			s.push(b <= a)
+		case exprOpPlus:
+			a, b, err := take2Float(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+
+			s.push(b + a)
+		case exprOpMinus:
+			a, b, err := take2Float(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+
+			s.push(b - a)
+		case exprOpSlash:
+			a, b, err := take2Float(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+
+			if a == 0.0 {
+				return false, errors.New("Cannot divide by zero")
+			}
+			s.push(b / a)
+		case exprOpStar:
+			a, b, err := take2Float(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+
+			if a == 0.0 {
+				return false, errors.New("Cannot divide by zero")
+			}
+			s.push(b * a)
+		case exprOpHat:
+			a, b, err := take2Float(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+
+			if a == 0.0 {
+				return false, errors.New("Cannot divide by zero")
+			}
+			s.push(math.Pow(b, a))
+		case exprOpExclam:
+			a, err := take1Bool(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+			s.push(!a)
 		// Other
 		default:
 			return false, fmt.Errorf("Token not supported in evaluator: %v", exprTokenNames[item.typ])
@@ -197,7 +305,7 @@ func take1Bool(s *stack, op int) (bool, error) {
 	t := exprBool
 	val, ok := s.pop()
 	if !ok {
-		return false, fmt.Errorf(exprErrorNotEnoughOperands, exprTokenNames[t], exprTokenNames[op])
+		return false, fmt.Errorf(exprErrorNotEnoughOperands, exprTokenNames[op])
 	}
 
 	b, ok := val.(bool)
@@ -217,7 +325,7 @@ func take1Float(s *stack, op int) (float64, error) {
 	t := exprNumber
 	val, ok := s.pop()
 	if !ok {
-		return 0.0, fmt.Errorf(exprErrorNotEnoughOperands, exprTokenNames[t], exprTokenNames[op])
+		return 0.0, fmt.Errorf(exprErrorNotEnoughOperands, exprTokenNames[op])
 	}
 
 	b, ok := val.(float64)
@@ -231,4 +339,57 @@ func take2Float(s *stack, op int) (float64, float64, error) {
 	a, a_err := take1Float(s, op)
 	b, b_err := take1Float(s, op)
 	return a, b, firstError(a_err, b_err)
+}
+
+func take1ByteSlice(s *stack, op int) ([]byte, error) {
+	t := exprNumber
+	val, ok := s.pop()
+	if !ok {
+		return nil, fmt.Errorf(exprErrorNotEnoughOperands, exprTokenNames[op])
+	}
+
+	b, ok := val.([]byte)
+	if !ok {
+		return nil, fmt.Errorf(exprErrorBadOperandType, exprTokenNames[t], exprTokenNames[op])
+	}
+	return b, nil
+}
+
+func take2ByteSlice(s *stack, op int) ([]byte, []byte, error) {
+	a, a_err := take1ByteSlice(s, op)
+	b, b_err := take1ByteSlice(s, op)
+	return a, b, firstError(a_err, b_err)
+}
+
+func testByteSliceEquality(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func take1Null(s *stack, op int) error {
+	t := exprNull
+	val, ok := s.pop()
+	if !ok {
+		return fmt.Errorf(exprErrorNotEnoughOperands, exprTokenNames[op])
+	}
+
+	if reflect.TypeOf(val) != nil {
+		return fmt.Errorf(exprErrorBadOperandType, exprTokenNames[t], exprTokenNames[op])
+	}
+	return nil
+}
+
+func take2Null(s *stack, op int) error {
+	a_err := take1Null(s, op)
+	b_err := take1Null(s, op)
+	return firstError(a_err, b_err)
 }
