@@ -14,28 +14,29 @@ type test struct {
 }
 
 var tests = []test{
-	test{`key selection`, `{"aKey":32}`, `$.aKey+`, []Result{newResult(`32`, `aKey`)}},
-	test{`nested key selection`, `{"aKey":{"bKey":32}}`, `$.aKey+`, []Result{newResult(`{"bKey":32}`, `aKey`)}},
-	test{`empty array`, `{"aKey":[]}`, `$.aKey+`, []Result{newResult(`[]`, `aKey`)}},
-	test{`multiple same-level keys, weird spacing`, `{    "aKey" 	: true ,    "bKey":  [	1 , 2	], "cKey" 	: true		} `, `$.bKey+`, []Result{newResult(`[1,2]`, `bKey`)}},
+	test{`key selection`, `{"aKey":32}`, `$.aKey+`, []Result{newResult(`32`, JsonNumber, `aKey`)}},
+	test{`nested key selection`, `{"aKey":{"bKey":32}}`, `$.aKey+`, []Result{newResult(`{"bKey":32}`, JsonObject, `aKey`)}},
+	test{`empty array`, `{"aKey":[]}`, `$.aKey+`, []Result{newResult(`[]`, JsonArray, `aKey`)}},
+	test{`multiple same-level keys, weird spacing`, `{    "aKey" 	: true ,    "bKey":  [	1 , 2	], "cKey" 	: true		} `, `$.bKey+`, []Result{newResult(`[1,2]`, JsonArray, `bKey`)}},
 
-	test{`array index selection`, `{"aKey":[123,456]}`, `$.aKey[1]+`, []Result{newResult(`456`, `aKey`, 1)}},
-	test{`array wild index selection`, `{"aKey":[123,456]}`, `$.aKey[*]+`, []Result{newResult(`123`, `aKey`, 0), newResult(`456`, `aKey`, 1)}},
-	test{`array range index selection`, `{"aKey":[11,22,33,44]}`, `$.aKey[1:3]+`, []Result{newResult(`22`, `aKey`, 1), newResult(`33`, `aKey`, 2)}},
+	test{`array index selection`, `{"aKey":[123,456]}`, `$.aKey[1]+`, []Result{newResult(`456`, JsonNumber, `aKey`, 1)}},
+	test{`array wild index selection`, `{"aKey":[123,456]}`, `$.aKey[*]+`, []Result{newResult(`123`, JsonNumber, `aKey`, 0), newResult(`456`, JsonNumber, `aKey`, 1)}},
+	test{`array range index selection`, `{"aKey":[11,22,33,44]}`, `$.aKey[1:3]+`, []Result{newResult(`22`, JsonNumber, `aKey`, 1), newResult(`33`, JsonNumber, `aKey`, 2)}},
 	test{`array range (no index) selection`, `{"aKey":[11,22,33,44]}`, `$.aKey[1:1]+`, []Result{}},
-	test{`array range (no upper bound) selection`, `{"aKey":[11,22,33]}`, `$.aKey[1:]+`, []Result{newResult(`22`, `aKey`, 1), newResult(`33`, `aKey`, 2)}},
+	test{`array range (no upper bound) selection`, `{"aKey":[11,22,33]}`, `$.aKey[1:]+`, []Result{newResult(`22`, JsonNumber, `aKey`, 1), newResult(`33`, JsonNumber, `aKey`, 2)}},
 
 	test{`empty array - try selection`, `{"aKey":[]}`, `$.aKey[1]+`, []Result{}},
-	test{`empty object`, `{"aKey":{}}`, `$.aKey+`, []Result{newResult(`{}`, `aKey`)}},
-	test{`object w/ height=2`, `{"aKey":{"bKey":32}}`, `$.aKey.bKey+`, []Result{newResult(`32`, `aKey`, `bKey`)}},
-	test{`array of multiple types`, `{"aKey":[1,{"s":true},"asdf"]}`, `$.aKey[1]+`, []Result{newResult(`{"s":true}`, `aKey`, 1)}},
-	test{`nested array selection`, `{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey+`, []Result{newResult(`[123,456]`, `aKey`, `bKey`)}},
-	test{`nested array`, `[[[[[]], [true, false, []]]]]`, `$[0][0][1][2]+`, []Result{newResult(`[]`, 0, 0, 1, 2)}},
-	test{`index of array selection`, `{"aKey":{"bKey":[123, 456, 789]}}`, `$.aKey.bKey[1]+`, []Result{newResult(`456`, `aKey`, `bKey`, 1)}},
-	test{`index of array selection (more than one)`, `{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey[1]+`, []Result{newResult(`456`, `aKey`, `bKey`, 1)}},
-	test{`multi-level object/array`, `{"1Key":{"aKey": null, "bKey":{"trash":[1,2]}, "cKey":[123,456] }, "2Key":false}`, `$.1Key.bKey.trash[0]+`, []Result{newResult(`1`, `1Key`, `bKey`, `trash`, 0)}},
-	test{`multi-level array`, `{"aKey":[true,false,null,{"michael":[5,6,7]}, ["s", "3"] ]}`, `$.*[*].michael[1]+`, []Result{newResult(`6`, `aKey`, 3, `michael`, 1)}},
-	test{`multi-level array 2`, `{"aKey":[true,false,null,{"michael":[5,6,7]}, ["s", "3"] ]}`, `$.*[*][1]+`, []Result{newResult(`"3"`, `aKey`, 4, 1)}},
+	test{`null selection`, `{"aKey":[null]}`, `$.aKey[0]+`, []Result{newResult(`null`, JsonNull, `aKey`, 0)}},
+	test{`empty object`, `{"aKey":{}}`, `$.aKey+`, []Result{newResult(`{}`, JsonObject, `aKey`)}},
+	test{`object w/ height=2`, `{"aKey":{"bKey":32}}`, `$.aKey.bKey+`, []Result{newResult(`32`, JsonNumber, `aKey`, `bKey`)}},
+	test{`array of multiple types`, `{"aKey":[1,{"s":true},"asdf"]}`, `$.aKey[1]+`, []Result{newResult(`{"s":true}`, JsonObject, `aKey`, 1)}},
+	test{`nested array selection`, `{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey+`, []Result{newResult(`[123,456]`, JsonArray, `aKey`, `bKey`)}},
+	test{`nested array`, `[[[[[]], [true, false, []]]]]`, `$[0][0][1][2]+`, []Result{newResult(`[]`, JsonArray, 0, 0, 1, 2)}},
+	test{`index of array selection`, `{"aKey":{"bKey":[123, 456, 789]}}`, `$.aKey.bKey[1]+`, []Result{newResult(`456`, JsonNumber, `aKey`, `bKey`, 1)}},
+	test{`index of array selection (more than one)`, `{"aKey":{"bKey":[123,456]}}`, `$.aKey.bKey[1]+`, []Result{newResult(`456`, JsonNumber, `aKey`, `bKey`, 1)}},
+	test{`multi-level object/array`, `{"1Key":{"aKey": null, "bKey":{"trash":[1,2]}, "cKey":[123,456] }, "2Key":false}`, `$.1Key.bKey.trash[0]+`, []Result{newResult(`1`, JsonNumber, `1Key`, `bKey`, `trash`, 0)}},
+	test{`multi-level array`, `{"aKey":[true,false,null,{"michael":[5,6,7]}, ["s", "3"] ]}`, `$.*[*].michael[1]+`, []Result{newResult(`6`, JsonNumber, `aKey`, 3, `michael`, 1)}},
+	test{`multi-level array 2`, `{"aKey":[true,false,null,{"michael":[5,6,7]}, ["s", "3"] ]}`, `$.*[*][1]+`, []Result{newResult(`"3"`, JsonString, `aKey`, 4, 1)}},
 }
 
 func TestPathQuery(t *testing.T) {
@@ -55,7 +56,7 @@ func TestPathQuery(t *testing.T) {
 	}
 }
 
-func newResult(value string, keys ...interface{}) Result {
+func newResult(value string, typ int, keys ...interface{}) Result {
 	keysChanged := make([]interface{}, len(keys))
 	for i, k := range keys {
 		switch v := k.(type) {
@@ -69,6 +70,7 @@ func newResult(value string, keys ...interface{}) Result {
 	return Result{
 		Value: []byte(value),
 		Keys:  keysChanged,
+		Type:  typ,
 	}
 }
 
