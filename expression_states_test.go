@@ -10,16 +10,16 @@ import (
 var expressionTests = []lexTest{
 	{"empty", "", []int{exprEOF}},
 	{"spaces", "     \t\r\n", []int{exprEOF}},
-	{"numbers", "1 1.2 1.3e10 0 1.2", []int{exprNumber, exprNumber, exprNumber, exprNumber, exprNumber, exprNumber, exprEOF}},
+	{"numbers", " 1.3e10 ", []int{exprNumber, exprEOF}},
 	// {"numbers with signs", "+1 -2.23", []int{exprNumber, exprOpPlus, exprNumber, exprEOF}},
-	{"paths", "@.aKey[2].bKey $.sKey", []int{exprPath, exprPath, exprEOF}},
-	{"expressions without spaces", "4+-19", []int{exprNumber, exprOpPlus, exprOpMinus, exprNumber, exprEOF}},
-	{"expressions without spaces x2", "4+19", []int{exprNumber, exprOpPlus, exprNumber, exprEOF}},
-	{"expressions without spaces x3", "4-19", []int{exprNumber, exprOpMinus, exprNumber, exprEOF}},
+	{"paths", " @.aKey[2].bKey ", []int{exprPath, exprEOF}},
+	{"addition with mixed sign", "4+-19", []int{exprNumber, exprOpPlus, exprOpMinusUn, exprNumber, exprEOF}},
+	{"addition", "4+19", []int{exprNumber, exprOpPlus, exprNumber, exprEOF}},
+	{"subtraction", "4-19", []int{exprNumber, exprOpMinus, exprNumber, exprEOF}},
 
-	{"parens", "(  () () )", []int{exprParenLeft, exprParenLeft, exprParenRight, exprParenLeft, exprParenRight, exprParenRight, exprEOF}},
-	{"operations", "+-==", []int{exprOpPlus, exprOpMinus, exprOpEq, exprEOF}},
-	{"numerical comparisons", " <<=>>=", []int{exprOpLt, exprOpLe, exprOpGt, exprOpGe, exprEOF}},
+	{"parens", "( () + () )", []int{exprParenLeft, exprParenLeft, exprParenRight, exprOpPlus, exprParenLeft, exprParenRight, exprParenRight, exprEOF}},
+	{"equals", "true ==", []int{exprBool, exprOpEq, exprEOF}},
+	{"numerical comparisons", "3.4 <", []int{exprNumber, exprOpLt, exprEOF}},
 }
 
 func TestExpressionTokens(t *testing.T) {

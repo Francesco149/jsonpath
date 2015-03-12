@@ -33,21 +33,23 @@ var opa = map[int]struct {
 	prec   int
 	rAssoc bool
 }{
-	exprOpAnd:     {1, false},
-	exprOpOr:      {1, false},
-	exprOpEq:      {2, false},
-	exprOpNeq:     {2, false},
-	exprOpLt:      {3, false},
-	exprOpLe:      {3, false},
-	exprOpGt:      {3, false},
-	exprOpGe:      {3, false},
-	exprOpPlus:    {4, false},
-	exprOpMinus:   {4, false},
-	exprOpSlash:   {5, false},
-	exprOpStar:    {5, false},
-	exprOpPercent: {5, false}, // Disabled, no modulo for float
+	exprOpAnd:   {1, false},
+	exprOpOr:    {1, false},
+	exprOpEq:    {2, false},
+	exprOpNeq:   {2, false},
+	exprOpLt:    {3, false},
+	exprOpLe:    {3, false},
+	exprOpGt:    {3, false},
+	exprOpGe:    {3, false},
+	exprOpPlus:  {4, false},
+	exprOpMinus: {4, false},
+	exprOpSlash: {5, false},
+	exprOpStar:  {5, false},
+	//exprOpPercent: {5, false}, // Disabled, no modulo for float
 	exprOpHat:     {6, false},
-	exprOpNeg:     {7, false},
+	exprOpNot:     {7, false},
+	exprOpPlusUn:  {7, false},
+	exprOpMinusUn: {7, false},
 }
 
 // Shunting-yard Algorithm (infix -> postfix)
@@ -111,7 +113,7 @@ func infixToPostFix(items []Item) (out []Item, err error) {
 	return
 }
 
-func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (bool, error) {
+func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (interface{}, error) {
 	s := newStack()
 
 	if len(postFixItems) == 0 {
@@ -231,7 +233,7 @@ func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (bool, err
 				}
 				s.push(!byteSlicesEqual(a, b))
 			}
-		case exprOpNeg:
+		case exprOpNot:
 			a, err := take1Bool(s, item.typ)
 			if err != nil {
 				return false, err
@@ -278,15 +280,25 @@ func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (bool, err
 			if err != nil {
 				return false, err
 			}
-
 			s.push(b + a)
+		case exprOpPlusUn:
+			a, err := take1Float(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+			s.push(a)
 		case exprOpMinus:
 			a, b, err := take2Float(s, item.typ)
 			if err != nil {
 				return false, err
 			}
-
 			s.push(b - a)
+		case exprOpMinusUn:
+			a, err := take1Float(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+			s.push(0 - a)
 		case exprOpSlash:
 			a, b, err := take2Float(s, item.typ)
 			if err != nil {
@@ -303,9 +315,6 @@ func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (bool, err
 				return false, err
 			}
 
-			if a == 0.0 {
-				return false, errors.New("Cannot divide by zero")
-			}
 			s.push(b * a)
 		case exprOpHat:
 			a, b, err := take2Float(s, item.typ)
@@ -313,9 +322,6 @@ func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (bool, err
 				return false, err
 			}
 
-			if a == 0.0 {
-				return false, errors.New("Cannot divide by zero")
-			}
 			s.push(math.Pow(b, a))
 		case exprOpExclam:
 			a, err := take1Bool(s, item.typ)
@@ -330,15 +336,10 @@ func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (bool, err
 	}
 
 	if s.len() != 1 {
-		fmt.Println(s.len())
 		return false, fmt.Errorf(exprErrorBadExpression)
 	}
 	end_int, _ := s.pop()
-	end_bool, ok := end_int.(bool)
-	if !ok {
-		return false, fmt.Errorf(exprErrorFinalValueNotBool)
-	}
-	return end_bool, nil
+	return end_int, nil
 }
 
 func take1Bool(s *stack, op int) (bool, error) {

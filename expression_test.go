@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var exprBoolTests = []struct {
+var exprTests = []struct {
 	input         string
 	fields        map[string]Item
-	expectedValue bool
+	expectedValue interface{}
 }{
 	// &&
 	{"true && true", nil, true},
@@ -85,14 +85,32 @@ var exprBoolTests = []struct {
 	{`@a != null`, map[string]Item{"@a": genValue(`null`, jsonNull)}, false},
 
 	// Plus
-	{"20 + 7 == 27", nil, true},
-	{"20 + 6 == 27", nil, false},
-	{"20 + 6.999999 == 27", nil, false},
+	{"20 + 7", nil, 27},
+	{"20 + 6.999999", nil, 26.999999},
 
 	// Minus
-	{"20 - 7 == 13", nil, true},
-	{"20 - 6 == 13", nil, false},
-	{"20 - 6.999999 == 13", nil, false},
+	{"20 - 7", nil, 13},
+	{"20 - 7.11111", nil, 12.88889},
+
+	// Minus Unary
+	{"-27", nil, -27},
+	{"30 - -3", nil, 33},
+	{"30 + -3", nil, 27},
+
+	// Star
+	{"20 * 7", nil, 140},
+	{"20 * 6.999999", nil, 139.99998},
+	{"20 * -7", nil, -140},
+	{"-20 * -7", nil, 140},
+
+	// Slash
+	{"20 / 5", nil, 4},
+	{"20 / 6.999999 - 2.85714326531 <= 0.00000001", nil, true},
+
+	// Hat
+	{"7 ^ 4", nil, 2401},
+	{"2 ^ -2", nil, 0.25},
+	{"((7 ^ -4) - 0.00041649312) <= 0.0001", nil, true},
 
 	// Negate
 	{"!true", nil, false},
@@ -115,7 +133,7 @@ func TestExpressions(t *testing.T) {
 	as := assert.New(t)
 	emptyFields := map[string]Item{}
 
-	for _, test := range exprBoolTests {
+	for _, test := range exprTests {
 		if test.fields == nil {
 			test.fields = emptyFields
 		}
@@ -128,7 +146,7 @@ func TestExpressions(t *testing.T) {
 		if as.NoError(err, "Could not transform to postfix\nTest: %q", test.input) {
 			val, err := evaluatePostFix(items_post, test.fields)
 			if as.NoError(err, "Could not evaluate postfix\nTest Input: %q\nTest Values:%q\nError:%q", test.input, test.fields, err) {
-				as.Equal(test.expectedValue, val, "%q  -> Actual: %t   Expected %t\n", test.input, val, test.expectedValue)
+				as.Equal(test.expectedValue, val, "\nTest: %q\nActual: %v \nExpected %v\n", test.input, val, test.expectedValue)
 			}
 		}
 	}
@@ -160,8 +178,7 @@ func TestBadExpressions(t *testing.T) {
 		items = items[0 : len(items)-1]
 		items_post, err := infixToPostFix(items)
 		if as.NoError(err, "Could not transform to postfix\nTest: %q", test.input) {
-			val, err := evaluatePostFix(items_post, test.fields)
-			as.False(val, "Expected false when error occurs")
+			_, err := evaluatePostFix(items_post, test.fields)
 			if as.Error(err, "Could not evaluate postfix\nTest Input: %q\nTest Values:%q\nError:%q", test.input, test.fields, err) {
 				as.True(strings.Contains(err.Error(), test.expectedErrorSubstring), "Test Input: %q\nError %q does not contain %q", test.input, err.Error(), test.expectedErrorSubstring)
 			}

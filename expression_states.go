@@ -14,7 +14,7 @@ const (
 	exprOperators
 	exprOpEq
 	exprOpNeq
-	exprOpNeg
+	exprOpNot
 	exprOpLt
 	exprOpLe
 	exprOpGt
@@ -22,7 +22,9 @@ const (
 	exprOpAnd
 	exprOpOr
 	exprOpPlus
+	exprOpPlusUn
 	exprOpMinus
+	exprOpMinusUn
 	exprOpSlash
 	exprOpStar
 	exprOpHat
@@ -43,7 +45,7 @@ var exprTokenNames = map[int]string{
 	exprString:     "STRING",
 	exprOpEq:       "==",
 	exprOpNeq:      "!=",
-	exprOpNeg:      "!",
+	exprOpNot:      "!",
 	exprOpLt:       "<",
 	exprOpLe:       "<=",
 	exprOpGt:       ">",
@@ -51,7 +53,9 @@ var exprTokenNames = map[int]string{
 	exprOpAnd:      "&&",
 	exprOpOr:       "||",
 	exprOpPlus:     "+",
+	exprOpPlusUn:   "+",
 	exprOpMinus:    "-",
+	exprOpMinusUn:  "-",
 	exprOpSlash:    "/",
 	exprOpStar:     "*",
 	exprOpHat:      "^",
@@ -80,28 +84,79 @@ func lexExprText(l lexer, state *intStack) stateFn {
 		l.take()
 		l.emit(exprParenRight)
 
-		if state.len() == 0 { // assumes root expression is always encased in ( and )
-			next = lexExprEnd
-		} else {
-			next = lexExprText
-		}
-	case '=':
-		l.take()
-		cur = l.take()
-		if cur != '=' {
-			return l.errorf("Expected double = instead of %#U", cur)
-		}
-		l.emit(exprOpEq)
-		next = lexExprText
+		next = lexOneValue
 	case '!':
 		l.take()
-		cur = l.peek()
-		if cur == '=' {
-			l.take()
-			l.emit(exprOpNeq)
-		} else {
-			l.emit(exprOpNeg)
+		l.emit(exprOpNot)
+		next = lexExprText
+	case '+':
+		l.take()
+		l.emit(exprOpPlusUn)
+		next = lexExprText
+	case '-':
+		l.take()
+		l.emit(exprOpMinusUn)
+		next = lexExprText
+	case '@', '$':
+		l.take()
+		takePath(l)
+		l.emit(exprPath)
+		next = lexOneValue
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		takeNumeric(l)
+		l.emit(exprNumber)
+		next = lexOneValue
+	case 't':
+		takeExactSequence(l, bytesTrue)
+		l.emit(exprBool)
+		next = lexOneValue
+	case 'f':
+		takeExactSequence(l, bytesFalse)
+		l.emit(exprBool)
+		next = lexOneValue
+	case 'n':
+		takeExactSequence(l, bytesNull)
+		l.emit(exprNull)
+		next = lexOneValue
+	case '"':
+		err := l.takeString()
+		if err != nil {
+			return l.errorf("Could not take string because %q", err)
 		}
+		l.emit(exprString)
+		next = lexOneValue
+	case eof:
+		l.emit(exprEOF)
+		// next = nil
+	default:
+		return l.errorf("Unrecognized sequence in expression: %#U", cur)
+	}
+	return next
+}
+
+func lexOneValue(l lexer, state *intStack) stateFn {
+	var next stateFn
+	cur := l.peek()
+	switch cur {
+	case '+':
+		l.take()
+		l.emit(exprOpPlus)
+		next = lexExprText
+	case '-':
+		l.take()
+		l.emit(exprOpMinus)
+		next = lexExprText
+	case '*':
+		l.take()
+		l.emit(exprOpStar)
+		next = lexExprText
+	case '/':
+		l.take()
+		l.emit(exprOpSlash)
+		next = lexExprText
+	case '^':
+		l.take()
+		l.emit(exprOpHat)
 		next = lexExprText
 	case '<':
 		l.take()
@@ -139,45 +194,34 @@ func lexExprText(l lexer, state *intStack) stateFn {
 		}
 		l.emit(exprOpOr)
 		next = lexExprText
-	case '@', '$':
+	case '=':
 		l.take()
-		takePath(l)
-		l.emit(exprPath)
-		next = lexExprText
-	case '+':
-		l.take()
-		l.emit(exprOpPlus)
-		next = lexExprText
-	case '-':
-		l.take()
-		l.emit(exprOpMinus)
-		next = lexExprText
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		takeNumeric(l)
-		l.emit(exprNumber)
-		next = lexExprText
-	case 't':
-		takeExactSequence(l, bytesTrue)
-		l.emit(exprBool)
-		next = lexExprText
-	case 'f':
-		takeExactSequence(l, bytesFalse)
-		l.emit(exprBool)
-		next = lexExprText
-	case 'n':
-		takeExactSequence(l, bytesNull)
-		l.emit(exprNull)
-		next = lexExprText
-	case '"':
-		err := l.takeString()
-		if err != nil {
-			return l.errorf("Could not take string because %q", err)
+		cur = l.take()
+		if cur != '=' {
+			return l.errorf("Expected double = instead of %#U", cur)
 		}
-		l.emit(exprString)
+		l.emit(exprOpEq)
 		next = lexExprText
+	case '!':
+		l.take()
+		cur = l.take()
+		if cur != '=' {
+			return l.errorf("Expected = for != instead of %#U", cur)
+		}
+		l.emit(exprOpNeq)
+		next = lexExprText
+	case ')':
+		if top, ok := state.peek(); ok && top != exprParenLeft {
+			next = l.errorf("Received %#U but has no matching (", cur)
+			break
+		}
+		state.pop()
+		l.take()
+		l.emit(exprParenRight)
+
+		next = lexOneValue
 	case eof:
 		l.emit(exprEOF)
-		// next = nil
 	default:
 		return l.errorf("Unrecognized sequence in expression: %#U", cur)
 	}
@@ -193,6 +237,9 @@ func takeNumeric(l lexer) {
 	if l.peek() == 'e' || l.peek() == 'E' {
 		l.take()
 		if l.peek() == '+' || l.peek() == '-' {
+			l.take()
+			takeDigits(l)
+		} else {
 			takeDigits(l)
 		}
 	}
