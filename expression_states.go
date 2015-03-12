@@ -14,6 +14,7 @@ const (
 	exprOperators
 	exprOpEq
 	exprOpNeq
+	exprOpNeg
 	exprOpLt
 	exprOpLe
 	exprOpGt
@@ -42,6 +43,7 @@ var exprTokenNames = map[int]string{
 	exprString:     "STRING",
 	exprOpEq:       "==",
 	exprOpNeq:      "!=",
+	exprOpNeg:      "!",
 	exprOpLt:       "<",
 	exprOpLe:       "<=",
 	exprOpGt:       ">",
@@ -90,6 +92,16 @@ func lexExprText(l lexer, state *intStack) stateFn {
 			return l.errorf("Expected double = instead of %#U", cur)
 		}
 		l.emit(exprOpEq)
+		next = lexExprText
+	case '!':
+		l.take()
+		cur = l.peek()
+		if cur == '=' {
+			l.take()
+			l.emit(exprOpNeq)
+		} else {
+			l.emit(exprOpNeg)
+		}
 		next = lexExprText
 	case '<':
 		l.take()

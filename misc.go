@@ -114,6 +114,29 @@ func readerToArray(tr tokenReader) []Item {
 	return vals
 }
 
+func byteSlicesEqual(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func firstError(errors ...error) error {
+	for _, e := range errors {
+		if e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
 // func print(q *query, i *Item) queryStateFn {
 // 	printLoc(q.state.location.toArray(), i.val)
 // 	return print

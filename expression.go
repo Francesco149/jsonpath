@@ -9,15 +9,24 @@ import (
 )
 
 const (
-	exprErrorMismatchedParens  = "Mismatched parentheses"
-	exprErrorBadExpression     = "Bad Expression"
-	exprErrorFinalValueNotBool = "Expression evaluated to a non-bool"
-	exprErrorNotEnoughOperands = "Not enough operands for operation %q"
-	exprErrorValueNotFound     = "Value not found"
-	exprErrorPathValueBadType  = "Value found at end of path cannot be compared"
-	exprErrorBadValueForType   = "Bad value %q for type %q"
-	exprErrorBadOperandType    = "Operand type expected to be %q for operation %q"
+	exprErrorMismatchedParens   = "Mismatched parentheses"
+	exprErrorBadExpression      = "Bad Expression"
+	exprErrorFinalValueNotBool  = "Expression evaluated to a non-bool"
+	exprErrorNotEnoughOperands  = "Not enough operands for operation %q"
+	exprErrorValueNotFound      = "Value for %q not found"
+	exprErrorBadValue           = "Bad value %q for type %q"
+	exprErrorPathValueNotScalar = "Path value must be scalar value"
+	exprErrorBadOperandType     = "Operand type expected to be %q for operation %q"
 )
+
+type exprErrorBadTypeComparison struct {
+	valueType    string
+	expectedType string
+}
+
+func (e exprErrorBadTypeComparison) Error() string {
+	return fmt.Sprintf("Type %s cannot be compared to type %s", e.valueType, e.expectedType)
+}
 
 // Lowest priority = lowest #
 var opa = map[int]struct {
@@ -38,6 +47,7 @@ var opa = map[int]struct {
 	exprOpStar:    {5, false},
 	exprOpPercent: {5, false}, // Disabled, no modulo for float
 	exprOpHat:     {6, false},
+	exprOpNeg:     {7, false},
 }
 
 // Shunting-yard Algorithm (infix -> postfix)
@@ -101,27 +111,27 @@ func infixToPostFix(items []Item) (out []Item, err error) {
 	return
 }
 
-func evaluatePostFix(items []Item, pathValues map[string]Item) (bool, error) {
+func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (bool, error) {
 	s := newStack()
 
-	if len(items) == 0 {
+	if len(postFixItems) == 0 {
 		return false, errors.New(exprErrorBadExpression)
 	}
 
-	for _, item := range items {
+	for _, item := range postFixItems {
 		switch item.typ {
 
 		// VALUES
 		case exprBool:
 			val, err := strconv.ParseBool(string(item.val))
 			if err != nil {
-				return false, fmt.Errorf(exprErrorBadValueForType, string(item.val), exprTokenNames[exprBool])
+				return false, fmt.Errorf(exprErrorBadValue, string(item.val), exprTokenNames[exprBool])
 			}
 			s.push(val)
 		case exprNumber:
 			val, err := strconv.ParseFloat(string(item.val), 64)
 			if err != nil {
-				return false, fmt.Errorf(exprErrorBadValueForType, string(item.val), exprTokenNames[exprNumber])
+				return false, fmt.Errorf(exprErrorBadValue, string(item.val), exprTokenNames[exprNumber])
 			}
 			s.push(val)
 		case exprPath:
@@ -136,13 +146,13 @@ func evaluatePostFix(items []Item, pathValues map[string]Item) (bool, error) {
 			case jsonNumber:
 				val_float, err := strconv.ParseFloat(string(i.val), 64)
 				if err != nil {
-					return false, fmt.Errorf(exprErrorPathValueBadType)
+					return false, fmt.Errorf(exprErrorBadValue, string(item.val), jsonTokenNames[jsonNumber])
 				}
 				s.push(val_float)
 			case jsonKey, jsonString:
 				s.push(i.val)
 			default:
-				return false, fmt.Errorf(exprErrorPathValueBadType)
+				return false, fmt.Errorf(exprErrorPathValueNotScalar)
 			}
 		case exprString:
 			s.push(item.val)
@@ -187,8 +197,47 @@ func evaluatePostFix(items []Item, pathValues map[string]Item) (bool, error) {
 				if err != nil {
 					return false, err
 				}
-				s.push(testByteSliceEquality(a, b))
+				s.push(byteSlicesEqual(a, b))
 			}
+		case exprOpNeq:
+			p, ok := s.peek()
+			if !ok {
+				return false, fmt.Errorf(exprErrorNotEnoughOperands, exprTokenNames[item.typ])
+			}
+			switch p.(type) {
+			case nil:
+				err := take2Null(s, item.typ)
+				if err != nil {
+					return true, err
+				} else {
+					s.push(false)
+				}
+			case bool:
+				a, b, err := take2Bool(s, item.typ)
+				if err != nil {
+					return false, err
+				}
+				s.push(a != b)
+			case float64:
+				a, b, err := take2Float(s, item.typ)
+				if err != nil {
+					return false, err
+				}
+				s.push(a != b)
+			case []byte:
+				a, b, err := take2ByteSlice(s, item.typ)
+				if err != nil {
+					return false, err
+				}
+				s.push(!byteSlicesEqual(a, b))
+			}
+		case exprOpNeg:
+			a, err := take1Bool(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+
+			s.push(!a)
 		case exprOpOr:
 			a, b, err := take2Bool(s, item.typ)
 			if err != nil {
@@ -292,15 +341,6 @@ func evaluatePostFix(items []Item, pathValues map[string]Item) (bool, error) {
 	return end_bool, nil
 }
 
-func firstError(errors ...error) error {
-	for _, e := range errors {
-		if e != nil {
-			return e
-		}
-	}
-	return nil
-}
-
 func take1Bool(s *stack, op int) (bool, error) {
 	t := exprBool
 	val, ok := s.pop()
@@ -310,7 +350,7 @@ func take1Bool(s *stack, op int) (bool, error) {
 
 	b, ok := val.(bool)
 	if !ok {
-		return false, fmt.Errorf(exprErrorBadOperandType, exprTokenNames[t], exprTokenNames[op])
+		return false, exprErrorBadTypeComparison{exprTokenNames[t], (reflect.TypeOf(val)).String()}
 	}
 	return b, nil
 }
@@ -330,7 +370,7 @@ func take1Float(s *stack, op int) (float64, error) {
 
 	b, ok := val.(float64)
 	if !ok {
-		return 0.0, fmt.Errorf(exprErrorBadOperandType, exprTokenNames[t], exprTokenNames[op])
+		return 0.0, exprErrorBadTypeComparison{exprTokenNames[t], (reflect.TypeOf(val)).String()}
 	}
 	return b, nil
 }
@@ -350,7 +390,7 @@ func take1ByteSlice(s *stack, op int) ([]byte, error) {
 
 	b, ok := val.([]byte)
 	if !ok {
-		return nil, fmt.Errorf(exprErrorBadOperandType, exprTokenNames[t], exprTokenNames[op])
+		return nil, exprErrorBadTypeComparison{exprTokenNames[t], (reflect.TypeOf(val)).String()}
 	}
 	return b, nil
 }
@@ -361,20 +401,6 @@ func take2ByteSlice(s *stack, op int) ([]byte, []byte, error) {
 	return a, b, firstError(a_err, b_err)
 }
 
-func testByteSliceEquality(a, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 func take1Null(s *stack, op int) error {
 	t := exprNull
 	val, ok := s.pop()
@@ -382,8 +408,8 @@ func take1Null(s *stack, op int) error {
 		return fmt.Errorf(exprErrorNotEnoughOperands, exprTokenNames[op])
 	}
 
-	if reflect.TypeOf(val) != nil {
-		return fmt.Errorf(exprErrorBadOperandType, exprTokenNames[t], exprTokenNames[op])
+	if v := reflect.TypeOf(val); v != nil {
+		return exprErrorBadTypeComparison{exprTokenNames[t], v.String()}
 	}
 	return nil
 }

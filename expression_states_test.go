@@ -22,7 +22,7 @@ var expressionTests = []lexTest{
 	{"numerical comparisons", " <<=>>=", []int{exprOpLt, exprOpLe, exprOpGt, exprOpGe, exprEOF}},
 }
 
-func TestValidExpressions(t *testing.T) {
+func TestExpressionTokens(t *testing.T) {
 	as := assert.New(t)
 	for _, test := range expressionTests {
 		lexer := NewSliceLexer([]byte(test.input), EXPRESSION)
