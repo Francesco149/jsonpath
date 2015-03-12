@@ -23,14 +23,13 @@ type path struct {
 }
 
 type operator struct {
-	typ int
-
+	typ        int
 	indexStart int
 	indexEnd   int
-
 	keyStrings map[string]struct{}
 
 	whereClauseBytes []byte
+	dependentPaths   []*path
 	whereClause      []Item
 }
 
@@ -126,11 +125,22 @@ func parsePath(pathString string) (*path, error) {
 				return nil, errors.New(string(errItem.val))
 			}
 
+			// transform expression into postfix form
 			op.whereClause, err = infixToPostFix(items[:len(items)-1]) // trim EOF
 			if err != nil {
 				return nil, err
 			}
-
+			op.dependentPaths = make([]*path, 0)
+			// parse all paths in expression
+			for _, item := range op.whereClause {
+				if item.typ == exprPath {
+					p, err := parsePath(string(item.val))
+					if err != nil {
+						return nil, err
+					}
+					op.dependentPaths = append(op.dependentPaths, p)
+				}
+			}
 		}
 	}
 	return p, nil
@@ -150,7 +160,12 @@ func generatePath(tr tokenReader) (*path, error) {
 		switch p.typ {
 		case pathRoot:
 			if len(q.operators) != 0 {
-				return nil, errors.New("Unexpected root after start")
+				return nil, errors.New("Unexpected root node after start")
+			}
+			continue
+		case pathCurrent:
+			if len(q.operators) != 0 {
+				return nil, errors.New("Unexpected current node after start")
 			}
 			continue
 		case pathPeriod:

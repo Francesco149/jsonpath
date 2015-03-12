@@ -346,21 +346,7 @@ func pathEndValue(q *query, i *Item) queryStateFn {
 			val := make([]byte, q.buffer.Len())
 			copy(val, q.buffer.Bytes())
 			r.Value = val
-
-			switch r.Value[0] {
-			case '{':
-				r.Type = JsonObject
-			case '"':
-				r.Type = JsonString
-			case '[':
-				r.Type = JsonArray
-			case 'n':
-				r.Type = JsonNull
-			case 't', 'b':
-				r.Type = JsonBool
-			default:
-				r.Type = JsonNumber
-			}
+			r.Type = determineType(val)
 		}
 		q.state.Results <- r
 
@@ -392,4 +378,21 @@ func itemMatchOperator(loc interface{}, i *Item, op *operator) bool {
 		}
 	}
 	return false
+}
+
+func determineType(val []byte) int {
+	switch val[0] {
+	case '{':
+		return JsonObject
+	case '"':
+		return JsonString
+	case '[':
+		return JsonArray
+	case 'n':
+		return JsonNull
+	case 't', 'b':
+		return JsonBool
+	default:
+		return JsonNumber
+	}
 }

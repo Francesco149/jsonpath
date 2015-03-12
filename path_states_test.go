@@ -7,10 +7,11 @@ import (
 )
 
 var pathTests = []lexTest{
-	{"simple", `$.akey`, []int{pathRoot, pathPeriod, pathKey, pathEOF}},
-	{"simple w/ value", `$.akey+`, []int{pathRoot, pathPeriod, pathKey, pathValue, pathEOF}},
-	{"simple 2", `$.akey.akey2`, []int{pathRoot, pathPeriod, pathKey, pathPeriod, pathKey, pathEOF}},
-	{"simple 3", `$.akey.akey2.akey3`, []int{pathRoot, pathPeriod, pathKey, pathPeriod, pathKey, pathPeriod, pathKey, pathEOF}},
+	{"simple root node", `$.akey`, []int{pathRoot, pathPeriod, pathKey, pathEOF}},
+	{"simple current node", `@.akey`, []int{pathCurrent, pathPeriod, pathKey, pathEOF}},
+	{"simple root node w/ value", `$.akey+`, []int{pathRoot, pathPeriod, pathKey, pathValue, pathEOF}},
+	{"nested object", `$.akey.akey2`, []int{pathRoot, pathPeriod, pathKey, pathPeriod, pathKey, pathEOF}},
+	{"nested objects", `$.akey.akey2.akey3`, []int{pathRoot, pathPeriod, pathKey, pathPeriod, pathKey, pathPeriod, pathKey, pathEOF}},
 	{"quoted keys", `$.akey["akey2"].akey3`, []int{pathRoot, pathPeriod, pathKey, pathBracketLeft, pathKey, pathBracketRight, pathPeriod, pathKey, pathEOF}},
 	{"wildcard key", `$.akey.*.akey3`, []int{pathRoot, pathPeriod, pathKey, pathPeriod, pathWildcard, pathPeriod, pathKey, pathEOF}},
 	{"wildcard index", `$.akey[*]`, []int{pathRoot, pathPeriod, pathKey, pathBracketLeft, pathWildcard, pathBracketRight, pathEOF}},

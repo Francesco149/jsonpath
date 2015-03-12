@@ -49,6 +49,7 @@ func Iterate(l lexer) {
 	}
 }
 
+// TODO: Turn into Result.String()
 func PrintResult(r Result, showPath bool) {
 	printed := false
 	if showPath {

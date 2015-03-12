@@ -5,6 +5,7 @@ const (
 	pathEOF
 
 	pathRoot
+	pathCurrent
 	pathKey
 	pathBracketLeft
 	pathBracketRight
@@ -24,6 +25,7 @@ var pathTokenNames = map[int]string{
 	pathEOF:   "EOF",
 
 	pathRoot:         "$",
+	pathCurrent:      "@",
 	pathKey:          "KEY",
 	pathBracketLeft:  "[",
 	pathBracketRight: "]",
@@ -38,15 +40,19 @@ var pathTokenNames = map[int]string{
 	pathExpression:   "EXPRESSION",
 }
 
-var PATH = lexPathRoot
+var PATH = lexPathStart
 
-func lexPathRoot(l lexer, state *intStack) stateFn {
+func lexPathStart(l lexer, state *intStack) stateFn {
 	ignoreSpaceRun(l)
 	cur := l.take()
-	if cur != '$' {
-		return l.errorf("Expected $ at start of path instead of  %#U", cur)
+	switch cur {
+	case '$':
+		l.emit(pathRoot)
+	case '@':
+		l.emit(pathCurrent)
+	default:
+		return l.errorf("Expected $ or @ at start of path instead of  %#U", cur)
 	}
-	l.emit(pathRoot)
 
 	return lexPathAfterKey
 }
