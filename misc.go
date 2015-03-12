@@ -114,6 +114,15 @@ func readerToArray(tr tokenReader) []Item {
 	return vals
 }
 
+func findErrors(items []Item) (Item, bool) {
+	for _, i := range items {
+		if i.typ == lexError {
+			return i, true
+		}
+	}
+	return Item{}, false
+}
+
 func byteSlicesEqual(a, b []byte) bool {
 	if len(a) != len(b) {
 		return false

@@ -31,7 +31,7 @@ type operator struct {
 	keyStrings map[string]struct{}
 
 	whereClauseBytes []byte
-	// whereClause
+	whereClause      []Item
 }
 
 func genIndexKey(tr tokenReader) (*operator, error) {
@@ -118,10 +118,19 @@ func parsePath(pathString string) (*path, error) {
 	//Generate dependent paths
 	for _, op := range p.operators {
 		if len(op.whereClauseBytes) > 0 {
+			var err error
 			trimmed := op.whereClauseBytes[1 : len(op.whereClauseBytes)-1]
 			whereLexer := NewSliceLexer(trimmed, EXPRESSION)
 			items := readerToArray(whereLexer)
-			_ = items
+			if errItem, found := findErrors(items); found {
+				return nil, errors.New(string(errItem.val))
+			}
+
+			op.whereClause, err = infixToPostFix(items[:len(items)-1]) // trim EOF
+			if err != nil {
+				return nil, err
+			}
+
 		}
 	}
 	return p, nil

@@ -118,8 +118,8 @@ var exprTests = []struct {
 
 	// Mix
 	{"20 >= 20 || 2 == 2", nil, true},
-	{"20 > $.test && $.test < 13 && $.test > 1.99994", map[string]Item{"$.test": genValue(`10.23423`, jsonNumber)}, true},
-	{"20 > $.test && $.test < 13 && $.test > 1.99994", map[string]Item{"$.test": genValue(`15.3423`, jsonNumber)}, false},
+	{"20 > @.test && @.test < 13 && @.test > 1.99994", map[string]Item{"@.test": genValue(`10.23423`, jsonNumber)}, true},
+	{"20 > @.test && @.test < 13 && @.test > 1.99994", map[string]Item{"@.test": genValue(`15.3423`, jsonNumber)}, false},
 }
 
 func genValue(val string, typ int) Item {

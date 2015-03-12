@@ -97,7 +97,7 @@ func lexExprText(l lexer, state *intStack) stateFn {
 		l.take()
 		l.emit(exprOpMinusUn)
 		next = lexExprText
-	case '@', '$':
+	case '@': //, '$': // Only support current key location
 		l.take()
 		takePath(l)
 		l.emit(exprPath)
