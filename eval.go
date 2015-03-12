@@ -6,9 +6,19 @@ import (
 	"fmt"
 )
 
+const (
+	JsonObject = iota
+	JsonArray
+	JsonString
+	JsonNumber
+	JsonNull
+	JsonBool
+)
+
 type Result struct {
 	Keys  []interface{}
 	Value []byte
+	Type  int
 }
 
 type queryStateFn func(*query, *Item) queryStateFn
@@ -336,6 +346,21 @@ func pathEndValue(q *query, i *Item) queryStateFn {
 			val := make([]byte, q.buffer.Len())
 			copy(val, q.buffer.Bytes())
 			r.Value = val
+
+			switch r.Value[0] {
+			case '{':
+				r.Type = JsonObject
+			case '"':
+				r.Type = JsonString
+			case '[':
+				r.Type = JsonArray
+			case 'n':
+				r.Type = JsonNull
+			case 't', 'b':
+				r.Type = JsonBool
+			default:
+				r.Type = JsonNumber
+			}
 		}
 		q.state.Results <- r
 
