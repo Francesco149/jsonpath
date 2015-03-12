@@ -1,3 +1,4 @@
+[![Coverage](http://gocover.io/_badge/github.com/NodePrime/jsonpath)](http://gocover.io/github.com/NodePrime/jsonpath)
 # jsonpath  
   
 jsonpath is used to pull values out of a JSON document without unmarshalling the string into an object.  At the loss of post-parse random access and conversion to primitive types, you gain faster return speeds and lower memory utilization.  If the value you want is located near the start of the json, the evaluator will terminate after reaching and recording its destination.  
