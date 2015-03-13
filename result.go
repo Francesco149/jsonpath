@@ -1,5 +1,9 @@
 package jsonpath
 
+import (
+	"bytes"
+	"fmt"
+)
 
 const (
 	JsonObject = iota
