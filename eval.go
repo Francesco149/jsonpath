@@ -25,17 +25,18 @@ type queryStateFn func(*query, *Item) queryStateFn
 
 type query struct {
 	path
-	state  *eval
+	state  *Eval
 	next   queryStateFn
 	last   int
 	buffer bytes.Buffer
+	result *Result
 	valLoc stack
 }
 
 type key string
 type index int
 
-type eval struct {
+type Eval struct {
 	tr         tokenReader
 	levelStack intStack
 	location   stack
@@ -45,21 +46,21 @@ type eval struct {
 	nextKey    []byte
 	copyValues bool
 
-	Results chan Result
-	Error   error
+	resultQueue *Results
+	Error       error
 }
 
-func newEvaluation(tr tokenReader, paths ...*path) *eval {
-	e := &eval{
-		tr:         tr,
-		Results:    make(chan Result, 100),
-		location:   *newStack(),
-		levelStack: *newIntStack(),
-		state:      evalRoot,
-		queries:    make(map[string]*query, 0),
-		prevIndex:  -1,
-		nextKey:    nil,
-		copyValues: true, // depends on which lexer is used
+func newEvaluation(tr tokenReader, paths ...*path) *Eval {
+	e := &Eval{
+		tr:          tr,
+		location:    *newStack(),
+		levelStack:  *newIntStack(),
+		state:       evalRoot,
+		queries:     make(map[string]*query, 0),
+		prevIndex:   -1,
+		nextKey:     nil,
+		copyValues:  true, // depends on which lexer is used
+		resultQueue: newResults(),
 	}
 
 	for _, p := range paths {
@@ -84,43 +85,69 @@ func newEvaluation(tr tokenReader, paths ...*path) *eval {
 	return e
 }
 
-func (e *eval) run() {
-	// TODO: Replace this goroutine and eval.Results with user-cranked machine
-	for {
-		t, ok := e.tr.next()
-		if !ok || e.state == nil {
-			break
-		}
+func (e *Eval) Iterate() (*Results, bool) {
+	e.resultQueue.clear()
 
-		// run evaluator function
-		e.state = e.state(e, t)
+	t, ok := e.tr.next()
+	if !ok || e.state == nil {
+		return nil, false
+	}
 
-		anyRunning := false
-		// run path function for each path
-		for str, query := range e.queries {
-			if query.next != nil {
-				anyRunning = true
-				query.next = query.next(query, t)
-				if query.next == nil {
-					delete(e.queries, str)
-				}
+	// run evaluator function
+	e.state = e.state(e, t)
+
+	anyRunning := false
+	// run path function for each path
+	for str, query := range e.queries {
+		// safety check
+		if query.next != nil {
+			anyRunning = true
+			query.next = query.next(query, t)
+			if query.next == nil {
+				delete(e.queries, str)
 			}
-		}
 
-		if !anyRunning {
-			break
-		}
-
-		if e.Error != nil {
-			break
+			if query.result != nil {
+				e.resultQueue.push(query.result)
+				query.result = nil
+			}
+		} else {
+			delete(e.queries, str)
 		}
 	}
-	close(e.Results)
+
+	if !anyRunning {
+		return nil, false
+	}
+
+	if e.Error != nil {
+		return nil, false
+	}
+
+	return e.resultQueue, true
 }
 
-type evalStateFn func(*eval, *Item) evalStateFn
+func (e *Eval) Next() (*Result, bool) {
+	if e.resultQueue.len() > 0 {
+		return e.resultQueue.Pop(), true
+	}
 
-func evalRoot(e *eval, i *Item) evalStateFn {
+	for {
+		if _, ok := e.Iterate(); ok {
+			if e.resultQueue.len() > 0 {
+				return e.resultQueue.Pop(), true
+			}
+		} else {
+			break
+		}
+
+	}
+	return nil, false
+}
+
+type evalStateFn func(*Eval, *Item) evalStateFn
+
+func evalRoot(e *Eval, i *Item) evalStateFn {
 	switch i.typ {
 	case jsonBraceLeft:
 		e.levelStack.push(i.typ)
@@ -136,7 +163,7 @@ func evalRoot(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func evalObjectAfterOpen(e *eval, i *Item) evalStateFn {
+func evalObjectAfterOpen(e *Eval, i *Item) evalStateFn {
 	switch i.typ {
 	case jsonKey:
 		c := i.val[1 : len(i.val)-1]
@@ -157,7 +184,7 @@ func evalObjectAfterOpen(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func evalObjectColon(e *eval, i *Item) evalStateFn {
+func evalObjectColon(e *Eval, i *Item) evalStateFn {
 	switch i.typ {
 	case jsonColon:
 		return evalObjectValue
@@ -170,7 +197,7 @@ func evalObjectColon(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func evalObjectValue(e *eval, i *Item) evalStateFn {
+func evalObjectValue(e *Eval, i *Item) evalStateFn {
 	e.location.push(e.nextKey)
 
 	switch i.typ {
@@ -190,7 +217,7 @@ func evalObjectValue(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func evalObjectAfterValue(e *eval, i *Item) evalStateFn {
+func evalObjectAfterValue(e *Eval, i *Item) evalStateFn {
 	e.location.pop()
 	switch i.typ {
 	case jsonComma:
@@ -205,7 +232,7 @@ func evalObjectAfterValue(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func rightBraceOrBracket(e *eval) evalStateFn {
+func rightBraceOrBracket(e *Eval) evalStateFn {
 	e.levelStack.pop()
 
 	lowerTyp, ok := e.levelStack.peek()
@@ -222,7 +249,7 @@ func rightBraceOrBracket(e *eval) evalStateFn {
 	return nil
 }
 
-func evalArrayAfterOpen(e *eval, i *Item) evalStateFn {
+func evalArrayAfterOpen(e *Eval, i *Item) evalStateFn {
 	e.prevIndex = -1
 
 	switch i.typ {
@@ -239,7 +266,7 @@ func evalArrayAfterOpen(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func evalArrayValue(e *eval, i *Item) evalStateFn {
+func evalArrayValue(e *Eval, i *Item) evalStateFn {
 	e.prevIndex++
 	e.location.push(e.prevIndex)
 
@@ -260,7 +287,7 @@ func evalArrayValue(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func evalArrayAfterValue(e *eval, i *Item) evalStateFn {
+func evalArrayAfterValue(e *Eval, i *Item) evalStateFn {
 	switch i.typ {
 	case jsonComma:
 		if val, ok := e.location.pop(); ok {
@@ -281,7 +308,7 @@ func evalArrayAfterValue(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func setPrevIndex(e *eval) {
+func setPrevIndex(e *Eval) {
 	e.prevIndex = -1
 	peeked, ok := e.location.peek()
 	if ok {
@@ -291,7 +318,7 @@ func setPrevIndex(e *eval) {
 	}
 }
 
-func evalRootEnd(e *eval, i *Item) evalStateFn {
+func evalRootEnd(e *Eval, i *Item) evalStateFn {
 	if i.typ != jsonEOF {
 		if i.typ == jsonError {
 			evalError(e, i)
@@ -302,7 +329,7 @@ func evalRootEnd(e *eval, i *Item) evalStateFn {
 	return nil
 }
 
-func evalError(e *eval, i *Item) evalStateFn {
+func evalError(e *Eval, i *Item) evalStateFn {
 	e.Error = fmt.Errorf("%s at byte index %d", string(i.val), i.pos)
 	return nil
 }
@@ -341,7 +368,7 @@ func pathEndValue(q *query, i *Item) queryStateFn {
 			q.buffer.Write(i.val)
 		}
 	} else {
-		r := Result{Keys: q.valLoc.toArray()}
+		r := &Result{Keys: q.valLoc.toArray()}
 		if q.buffer.Len() > 0 {
 			val := make([]byte, q.buffer.Len())
 			copy(val, q.buffer.Bytes())
@@ -362,7 +389,7 @@ func pathEndValue(q *query, i *Item) queryStateFn {
 				r.Type = JsonNumber
 			}
 		}
-		q.state.Results <- r
+		q.result = r
 
 		q.valLoc = *newStack()
 		q.buffer.Truncate(0)
@@ -392,4 +419,40 @@ func itemMatchOperator(loc interface{}, i *Item, op *operator) bool {
 		}
 	}
 	return false
+}
+
+func (r *Result) Pretty(showPath bool) string {
+	b := bytes.NewBufferString("")
+	printed := false
+	if showPath {
+		for _, k := range r.Keys {
+			switch v := k.(type) {
+			case int:
+				b.WriteString(fmt.Sprintf("%d", v))
+			default:
+				b.WriteString(fmt.Sprintf("%q", v))
+			}
+			b.WriteRune('\t')
+			printed = true
+		}
+	} else if r.Value == nil {
+		if len(r.Keys) > 0 {
+			printed = true
+			switch v := r.Keys[len(r.Keys)-1].(type) {
+			case int:
+				b.WriteString(fmt.Sprintf("%d", v))
+			default:
+				b.WriteString(fmt.Sprintf("%q", v))
+			}
+		}
+	}
+
+	if r.Value != nil {
+		printed = true
+		b.WriteString(fmt.Sprintf("%s", r.Value))
+	}
+	if printed {
+		b.WriteRune('\n')
+	}
+	return b.String()
 }

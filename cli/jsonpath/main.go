@@ -35,29 +35,35 @@ func main() {
 			os.Exit(1)
 		}
 
-		eval, err := jsonpath.GetPathsInReader(f, paths...)
+		eval, err := jsonpath.EvalPathsInReader(f, paths...)
 		checkAndHandleError(err)
-		for l := range eval.Results {
-			jsonpath.PrintResult(l, *showKeysPtr)
-		}
+		run(eval, *showKeysPtr)
 		checkAndHandleError(eval.Error)
 		f.Close()
 
 	} else if jsonPtr != nil && *jsonPtr != "" {
-		eval, err := jsonpath.GetPathsInBytes([]byte(*jsonPtr), paths...)
+		eval, err := jsonpath.EvalPathsInBytes([]byte(*jsonPtr), paths...)
 		checkAndHandleError(err)
-		for l := range eval.Results {
-			jsonpath.PrintResult(l, *showKeysPtr)
-		}
+		run(eval, *showKeysPtr)
 		checkAndHandleError(eval.Error)
 	} else {
 		reader := bufio.NewReader(os.Stdin)
-		eval, err := jsonpath.GetPathsInReader(reader, paths...)
+		eval, err := jsonpath.EvalPathsInReader(reader, paths...)
 		checkAndHandleError(err)
-		for l := range eval.Results {
-			jsonpath.PrintResult(l, *showKeysPtr)
-		}
+		run(eval, *showKeysPtr)
 		checkAndHandleError(eval.Error)
+	}
+}
+
+func run(eval *jsonpath.Eval, showKeys bool) {
+	for {
+		result, running := eval.Next()
+		if result != nil {
+			fmt.Print(result.Pretty(showKeys))
+		}
+		if !running {
+			break
+		}
 	}
 }
 

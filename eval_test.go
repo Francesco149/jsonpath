@@ -43,9 +43,9 @@ func TestPathQuery(t *testing.T) {
 	as := assert.New(t)
 
 	for _, t := range tests {
-		eval, err := GetPathsInBytes([]byte(t.json), t.path)
+		eval, err := EvalPathsInBytes([]byte(t.json), t.path)
 		as.NoError(err, "Testing: %s", t.name)
-		res := toInterfaceArray(eval.Results)
+		res := toResultArray(eval)
 		// fmt.Println("--------")
 		// for _, r := range res {
 		// 	PrintResult(r, true)
@@ -74,10 +74,16 @@ func newResult(value string, typ int, keys ...interface{}) Result {
 	}
 }
 
-func toInterfaceArray(ch <-chan Result) []Result {
+func toResultArray(e *Eval) []Result {
 	vals := make([]Result, 0)
-	for l := range ch {
-		vals = append(vals, l)
+	for {
+		if r, ok := e.Next(); ok {
+			if r != nil {
+				vals = append(vals, *r)
+			}
+		} else {
+			break
+		}
 	}
 	return vals
 }
