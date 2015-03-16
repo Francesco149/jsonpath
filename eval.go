@@ -16,8 +16,8 @@ type query struct {
 	buffer      bytes.Buffer
 	resultQueue *Results
 	valLoc      stack // capture the current location stack at capture
-
-	buckets stack // stack of exprBucket
+	errors      []error
+	buckets     stack // stack of exprBucket
 }
 
 type exprBucket struct {
@@ -78,6 +78,7 @@ func newQuery(p *path) *query {
 		pos:         -1,
 		buffer:      *bytes.NewBuffer(make([]byte, 0, 50)),
 		valLoc:      *newStack(),
+		errors:      make([]error, 0),
 		resultQueue: newResults(),
 		buckets:     *newStack(),
 	}
@@ -158,8 +159,11 @@ func (q *query) trySpillOver() {
 		if q.loc() < bucket.operatorLoc {
 			q.buckets.pop()
 
-			pass := bucket.evaluate()
-			if pass {
+			exprRes, err := bucket.evaluate()
+			if err != nil {
+				q.errors = append(q.errors, err)
+			}
+			if exprRes {
 				next, ok := q.buckets.peek()
 				var spillover *Results
 				if !ok {
@@ -280,17 +284,14 @@ func pathEndValue(q *query, e *Eval, i *Item) queryStateFn {
 	return pathEndValue
 }
 
-func (b *exprBucket) evaluate() bool {
+func (b *exprBucket) evaluate() (bool, error) {
 	values := make(map[string]Item)
 	for _, q := range b.queries {
 		result := q.resultQueue.Pop()
 		if result != nil {
 			t, err := getJsonTokenType(result.Value)
 			if err != nil {
-				fmt.Println(result.Pretty(true))
-				fmt.Println(err)
-				// TODO: Log/handle err
-				return false
+				return false, err
 			}
 			i := Item{
 				typ: t,
@@ -299,19 +300,16 @@ func (b *exprBucket) evaluate() bool {
 			values[q.path.stringValue] = i
 		}
 	}
-	//map[string]Item
+
 	res, err := evaluatePostFix(b.expression, values)
 	if err != nil {
-		fmt.Println(err)
-		// TODO: Log/handle err
-		return false
+		return false, err
 	}
 	res_bool, ok := res.(bool)
 	if !ok {
-		fmt.Println("Could not set as bool")
-		return false
+		return false, fmt.Errorf(exprErrorFinalValueNotBool, res)
 	}
-	return res_bool
+	return res_bool, nil
 }
 
 func itemMatchOperator(loc interface{}, i *Item, op *operator) bool {
