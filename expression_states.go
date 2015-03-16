@@ -154,6 +154,10 @@ func lexOneValue(l lexer, state *intStack) stateFn {
 		l.take()
 		l.emit(exprOpSlash)
 		next = lexExprText
+	case '%':
+		l.take()
+		l.emit(exprOpPercent)
+		next = lexExprText
 	case '^':
 		l.take()
 		l.emit(exprOpHat)

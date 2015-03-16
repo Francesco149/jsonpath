@@ -112,6 +112,11 @@ var exprTests = []struct {
 	{"2 ^ -2", nil, 0.25},
 	{"((7 ^ -4) - 0.00041649312) <= 0.0001", nil, true},
 
+	// Mod
+	{"7.5 % 4", nil, 3.5},
+	{"2 % -2", nil, 0},
+	{"11 % 22", nil, 11},
+
 	// Negate
 	{"!true", nil, false},
 	{"!false", nil, true},

@@ -11,7 +11,7 @@ import (
 const (
 	exprErrorMismatchedParens   = "Mismatched parentheses"
 	exprErrorBadExpression      = "Bad Expression"
-	exprErrorFinalValueNotBool  = "Expression evaluated to a non-bool"
+	exprErrorFinalValueNotBool  = "Expression evaluated to a non-bool: %v"
 	exprErrorNotEnoughOperands  = "Not enough operands for operation %q"
 	exprErrorValueNotFound      = "Value for %q not found"
 	exprErrorBadValue           = "Bad value %q for type %q"
@@ -33,19 +33,19 @@ var opa = map[int]struct {
 	prec   int
 	rAssoc bool
 }{
-	exprOpAnd:   {1, false},
-	exprOpOr:    {1, false},
-	exprOpEq:    {2, false},
-	exprOpNeq:   {2, false},
-	exprOpLt:    {3, false},
-	exprOpLe:    {3, false},
-	exprOpGt:    {3, false},
-	exprOpGe:    {3, false},
-	exprOpPlus:  {4, false},
-	exprOpMinus: {4, false},
-	exprOpSlash: {5, false},
-	exprOpStar:  {5, false},
-	//exprOpPercent: {5, false}, // Disabled, no modulo for float
+	exprOpAnd:     {1, false},
+	exprOpOr:      {1, false},
+	exprOpEq:      {2, false},
+	exprOpNeq:     {2, false},
+	exprOpLt:      {3, false},
+	exprOpLe:      {3, false},
+	exprOpGt:      {3, false},
+	exprOpGe:      {3, false},
+	exprOpPlus:    {4, false},
+	exprOpMinus:   {4, false},
+	exprOpSlash:   {5, false},
+	exprOpStar:    {5, false},
+	exprOpPercent: {5, false},
 	exprOpHat:     {6, false},
 	exprOpNot:     {7, false},
 	exprOpPlusUn:  {7, false},
@@ -154,7 +154,6 @@ func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (interface
 			case jsonKey, jsonString:
 				s.push(i.val)
 			default:
-				fmt.Println("_____________________________", jsonTokenNames[i.typ], string(i.val))
 				return false, fmt.Errorf(exprErrorPathValueNotScalar)
 			}
 		case exprString:
@@ -317,6 +316,13 @@ func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (interface
 			}
 
 			s.push(b * a)
+		case exprOpPercent:
+			a, b, err := take2Float(s, item.typ)
+			if err != nil {
+				return false, err
+			}
+
+			s.push(math.Mod(b, a))
 		case exprOpHat:
 			a, b, err := take2Float(s, item.typ)
 			if err != nil {
