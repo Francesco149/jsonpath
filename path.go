@@ -107,7 +107,7 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 
 func parsePath(pathString string) (*path, error) {
 	lexer := NewSliceLexer([]byte(pathString), PATH)
-	p, err := generatePath(lexer)
+	p, err := tokensToOperators(lexer)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func parsePath(pathString string) (*path, error) {
 	return p, nil
 }
 
-func generatePath(tr tokenReader) (*path, error) {
+func tokensToOperators(tr tokenReader) (*path, error) {
 	q := &path{
 		stringValue:     "",
 		captureEndValue: false,

@@ -1,6 +1,7 @@
 package jsonpath
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -146,34 +147,35 @@ func firstError(errors ...error) error {
 	return nil
 }
 
-// func print(q *query, i *Item) queryStateFn {
-// 	printLoc(q.state.location.toArray(), i.val)
-// 	return print
-// }
+func abs(x int) int {
+	switch {
+	case x < 0:
+		return -x
+	case x == 0:
+		return 0 // return correctly abs(-0)
+	}
+	return x
+}
 
-// func printLoc(s []interface{}, vals ...interface{}) {
-// 	for _, s := range s {
-// 		switch v := s.(type) {
-// 		case []byte:
-// 			fmt.Printf("%s ", string(v))
-// 		default:
-// 			fmt.Printf("%v ", v)
-// 		}
-// 	}
-// 	for _, v := range vals {
-// 		switch i := v.(type) {
-// 		case []byte:
-// 			fmt.Printf("%s ", string(i))
-// 		default:
-// 			fmt.Printf("%v ", i)
-// 		}
-// 	}
-// 	fmt.Println("")
-// }
-
-// func printLevels(s []int) {
-// 	for _, s := range s {
-// 		fmt.Printf("%v ", jsonTokenNames[s])
-// 	}
-// 	fmt.Println("")
-// }
+//TODO: Kill the need for this
+func getJsonTokenType(val []byte) (int, error) {
+	if len(val) == 0 {
+		return -1, errors.New("No Value")
+	}
+	switch val[0] {
+	case '{':
+		return jsonBraceLeft, nil
+	case '"':
+		return jsonString, nil
+	case '[':
+		return jsonBracketLeft, nil
+	case 'n':
+		return jsonNull, nil
+	case 't', 'b':
+		return jsonBool, nil
+	case '-', '+', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		return jsonNumber, nil
+	default:
+		return -1, errors.New("Unrecognized Json Value")
+	}
+}

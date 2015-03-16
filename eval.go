@@ -2,22 +2,32 @@ package jsonpath
 
 import (
 	"bytes"
+	"fmt"
 )
 
-type queryStateFn func(*query, *Item) queryStateFn
+type queryStateFn func(*query, *Eval, *Item) queryStateFn
 
 type query struct {
 	path
-	state  *Eval
-	next   queryStateFn
-	last   int
-	buffer bytes.Buffer
-	result *Result
-	valLoc stack
+	state       queryStateFn
+	start       int
+	pos         int
+	firstType   int // first json token type in buffer
+	buffer      bytes.Buffer
+	resultQueue *Results
+	valLoc      stack // capture the current location stack at capture
+
+	buckets stack // stack of exprBucket
 }
 
-type key string
-type index int
+type exprBucket struct {
+	operatorLoc int
+	expression  []Item
+	queries     []*query
+	results     *Results
+}
+
+type evalStateFn func(*Eval, *Item) evalStateFn
 
 type Eval struct {
 	tr         tokenReader
@@ -47,17 +57,9 @@ func newEvaluation(tr tokenReader, paths ...*path) *Eval {
 	}
 
 	for _, p := range paths {
-		e.queries[p.stringValue] = &query{
-			path:   *p,
-			state:  e,
-			next:   pathMatchNextOp,
-			last:   -1,
-			buffer: *bytes.NewBuffer(make([]byte, 0, 50)),
-			valLoc: *newStack(),
-		}
+		e.queries[p.stringValue] = newQuery(p)
 	}
-
-	// Determine whether to copy item values from lexer
+	// Determine whether to copy emitted item values ([]byte) from lexer
 	switch tr.(type) {
 	case *readerLexer:
 		e.copyValues = true
@@ -66,6 +68,19 @@ func newEvaluation(tr tokenReader, paths ...*path) *Eval {
 	}
 
 	return e
+}
+
+func newQuery(p *path) *query {
+	return &query{
+		path:        *p,
+		state:       pathMatchOp,
+		start:       -1,
+		pos:         -1,
+		buffer:      *bytes.NewBuffer(make([]byte, 0, 50)),
+		valLoc:      *newStack(),
+		resultQueue: newResults(),
+		buckets:     *newStack(),
+	}
 }
 
 func (e *Eval) Iterate() (*Results, bool) {
@@ -82,20 +97,25 @@ func (e *Eval) Iterate() (*Results, bool) {
 	anyRunning := false
 	// run path function for each path
 	for str, query := range e.queries {
-		// safety check
-		if query.next != nil {
-			anyRunning = true
-			query.next = query.next(query, t)
-			if query.next == nil {
-				delete(e.queries, str)
-			}
-
-			if query.result != nil {
-				e.resultQueue.push(query.result)
-				query.result = nil
-			}
-		} else {
+		anyRunning = true
+		query.state = query.state(query, e, t)
+		if query.state == nil {
 			delete(e.queries, str)
+		}
+
+		if query.resultQueue.len() > 0 {
+			e.resultQueue.push(query.resultQueue.Pop())
+		}
+
+		for _, b := range query.buckets.values {
+			bucket := b.(exprBucket)
+			for _, dq := range bucket.queries {
+				dq.state = dq.state(dq, e, t)
+
+				if query.resultQueue.len() > 0 {
+					e.resultQueue.push(query.resultQueue.Pop())
+				}
+			}
 		}
 	}
 
@@ -128,38 +148,95 @@ func (e *Eval) Next() (*Result, bool) {
 	return nil, false
 }
 
-type evalStateFn func(*Eval, *Item) evalStateFn
+func (q *query) loc() int {
+	return abs(q.pos-q.start) + q.start
+}
 
-func pathMatchNextOp(q *query, i *Item) queryStateFn {
-	if q.last > q.state.location.len()-1 {
-		q.last -= 1
-		return pathMatchNextOp
+func (q *query) trySpillOver() {
+	if b, ok := q.buckets.peek(); ok {
+		bucket := b.(exprBucket)
+		if q.loc() < bucket.operatorLoc {
+			q.buckets.pop()
+
+			pass := bucket.evaluate()
+			if pass {
+				next, ok := q.buckets.peek()
+				var spillover *Results
+				if !ok {
+					// fmt.Println("Spilling over into end queue")
+					spillover = q.resultQueue
+				} else {
+					// fmt.Println("Spilling over into lower bucket")
+					nextBucket := next.(exprBucket)
+					spillover = nextBucket.results
+				}
+				for {
+					v := bucket.results.Pop()
+					if v != nil {
+						spillover.push(v)
+					} else {
+						break
+					}
+				}
+			}
+		}
 	}
+}
 
-	if q.last == q.state.location.len()-2 {
-		nextOp := q.operators[q.last+1]
-		current, ok := q.state.location.peek()
-		if ok {
-			if itemMatchOperator(current, i, nextOp) {
-				// printLoc(q.state.location.toArray())
-				q.last += 1
+func pathMatchOp(q *query, e *Eval, i *Item) queryStateFn {
+	curLocation := e.location.len() - 1
+
+	if q.loc() > curLocation {
+		q.pos -= 1
+		q.trySpillOver()
+	} else if q.loc() <= curLocation {
+		if q.loc() == curLocation-1 {
+			if len(q.operators)+q.start >= curLocation {
+				current, _ := e.location.peek()
+				nextOp := q.operators[abs(q.loc()-q.start)]
+				if itemMatchOperator(current, i, nextOp) {
+					q.pos += 1
+
+					if nextOp.whereClauseBytes != nil && len(nextOp.whereClause) > 0 {
+						bucket := exprBucket{
+							operatorLoc: q.loc(),
+							expression:  nextOp.whereClause,
+							queries:     make([]*query, len(nextOp.dependentPaths)),
+							results:     newResults(),
+						}
+
+						for i, p := range nextOp.dependentPaths {
+							bucket.queries[i] = newQuery(p)
+							bucket.queries[i].pos = q.loc()
+							bucket.queries[i].start = q.loc()
+							bucket.queries[i].captureEndValue = true
+						}
+						q.buckets.push(bucket)
+					}
+				}
+
 			}
 		}
 	}
 
-	if q.last == len(q.operators)-1 {
+	if q.loc() == len(q.operators)+q.start && q.loc() <= curLocation {
 		if q.captureEndValue {
+			q.firstType = i.typ
 			q.buffer.Write(i.val)
 		}
-		q.valLoc = *q.state.location.clone()
+		q.valLoc = *e.location.clone()
 		return pathEndValue
 	}
 
-	return pathMatchNextOp
+	if q.loc() < -1 {
+		return nil
+	} else {
+		return pathMatchOp
+	}
 }
 
-func pathEndValue(q *query, i *Item) queryStateFn {
-	if q.state.location.len() >= q.valLoc.len() {
+func pathEndValue(q *query, e *Eval, i *Item) queryStateFn {
+	if e.location.len()-1 >= q.loc() {
 		if q.captureEndValue {
 			q.buffer.Write(i.val)
 		}
@@ -169,16 +246,72 @@ func pathEndValue(q *query, i *Item) queryStateFn {
 			val := make([]byte, q.buffer.Len())
 			copy(val, q.buffer.Bytes())
 			r.Value = val
-			r.Type = determineType(val)
+
+			switch q.firstType {
+			case jsonBraceLeft:
+				r.Type = JsonObject
+			case jsonString:
+				r.Type = JsonString
+			case jsonBracketLeft:
+				r.Type = JsonArray
+			case jsonNull:
+				r.Type = JsonNull
+			case jsonBool:
+				r.Type = JsonBool
+			case jsonNumber:
+				r.Type = JsonNumber
+			default:
+				r.Type = -1
+			}
 		}
-		q.result = r
+
+		if q.buckets.len() == 0 {
+			q.resultQueue.push(r)
+		} else {
+			b, _ := q.buckets.peek()
+			b.(exprBucket).results.push(r)
+		}
 
 		q.valLoc = *newStack()
 		q.buffer.Truncate(0)
-		q.last -= 1
-		return pathMatchNextOp
+		q.pos -= 1
+		return pathMatchOp
 	}
 	return pathEndValue
+}
+
+func (b *exprBucket) evaluate() bool {
+	values := make(map[string]Item)
+	for _, q := range b.queries {
+		result := q.resultQueue.Pop()
+		if result != nil {
+			t, err := getJsonTokenType(result.Value)
+			if err != nil {
+				fmt.Println(result.Pretty(true))
+				fmt.Println(err)
+				// TODO: Log/handle err
+				return false
+			}
+			i := Item{
+				typ: t,
+				val: result.Value,
+			}
+			values[q.path.stringValue] = i
+		}
+	}
+	//map[string]Item
+	res, err := evaluatePostFix(b.expression, values)
+	if err != nil {
+		fmt.Println(err)
+		// TODO: Log/handle err
+		return false
+	}
+	res_bool, ok := res.(bool)
+	if !ok {
+		fmt.Println("Could not set as bool")
+		return false
+	}
+	return res_bool
 }
 
 func itemMatchOperator(loc interface{}, i *Item, op *operator) bool {

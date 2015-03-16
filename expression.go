@@ -140,7 +140,7 @@ func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (interface
 			// TODO: Handle datatypes of JSON
 			i, ok := pathValues[string(item.val)]
 			if !ok {
-				return false, fmt.Errorf(exprErrorValueNotFound)
+				return false, fmt.Errorf(exprErrorValueNotFound, string(item.val))
 			}
 			switch i.typ {
 			case jsonNull:
@@ -154,6 +154,7 @@ func evaluatePostFix(postFixItems []Item, pathValues map[string]Item) (interface
 			case jsonKey, jsonString:
 				s.push(i.val)
 			default:
+				fmt.Println("_____________________________", jsonTokenNames[i.typ], string(i.val))
 				return false, fmt.Errorf(exprErrorPathValueNotScalar)
 			}
 		case exprString:

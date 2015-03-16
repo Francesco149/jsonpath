@@ -55,20 +55,3 @@ func (r *Result) Pretty(showPath bool) string {
 	}
 	return b.String()
 }
-
-func determineType(val []byte) int {
-	switch val[0] {
-	case '{':
-		return JsonObject
-	case '"':
-		return JsonString
-	case '[':
-		return JsonArray
-	case 'n':
-		return JsonNull
-	case 't', 'b':
-		return JsonBool
-	default:
-		return JsonNumber
-	}
-}

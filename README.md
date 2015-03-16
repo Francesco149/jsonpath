@@ -55,12 +55,11 @@ All paths start from the root node `$`.  Similar to getting properties in a Java
 `["abc"]` = quoted property name  
 `*` = wildcard property name  
 `[n]` = Nth index of array  
-`[n:m]` = Nth index to m-1 index (same as Go Slicing)  
+`[n:m]` = Nth index to m-1 index (same as Go slicing)  
 `[n:]` = Nth index to end of array  
 `[*]` = wildcard index of array  
 `+` = get value at end of path  
-`?(expression)` = where clause
-
+`?(expression)` = where clause (expression can reference current json node with @)
   
 Example: 
 ```javascript
@@ -88,7 +87,9 @@ Example:
 	
 Example Paths:   
 *CLI*  
-`jsonpath --file=example.json --path='$.Items[*].tags[*]+' --keys`  
+```shell
+jsonpath --file=example.json --path='$.Items[*].tags[*]+' --keys
+```   
 "Items"	0	"tags"	0	"comedy"  
 "Items"	0	"tags"	1	"shakespeare"  
 "Items"	0	"tags"	2	"play"  
@@ -96,7 +97,7 @@ Example Paths:
 "Items"	1	"tags"	1	"revolution"  
 "Items"	1	"tags"	2	"london"  
   
-*Package*  
+*Paths*  
 `$.Items[*].title+`   
 ... "A Midsummer Night's Dream"   
 ... "A Tale of Two Cities"   
@@ -114,9 +115,3 @@ Example Paths:
 ...  "london"  
   
 ... = keys/indexes of path  
-  
-  
-### TODO  
-*Expressions*  
-`?(expression)`  
-Ex: `$.Items[*]?(title=='A Tale of Two Cities').tags+`  

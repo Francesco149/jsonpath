@@ -49,11 +49,7 @@ func TestPathQuery(t *testing.T) {
 		eval, err := EvalPathsInBytes([]byte(t.json), t.path)
 		as.NoError(err, "Testing: %s", t.name)
 		res := toResultArray(eval)
-		// fmt.Println("--------")
-		// for _, r := range res {
-		// 	PrintResult(r, true)
-		// }
-		// fmt.Println("--------")
+
 		as.NoError(eval.Error)
 		as.Equal(t.expected, res, "Testing of %q", t.name)
 	}
