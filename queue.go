@@ -37,6 +37,13 @@ func (q *Results) Pop() *Result {
 	return node
 }
 
+func (q *Results) peek() *Result {
+	if q.count == 0 {
+		return nil
+	}
+	return q.nodes[q.head]
+}
+
 func (q *Results) len() int {
 	return q.count
 }

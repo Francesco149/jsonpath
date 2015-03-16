@@ -2,39 +2,32 @@ package jsonpath
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
-const (
-	JsonObject = iota
-	JsonArray
-	JsonString
-	JsonNumber
-	JsonNull
-	JsonBool
-)
-
-type Result struct {
-	Keys  []interface{}
-	Value []byte
-	Type  int
-}
-
-type queryStateFn func(*query, *Item) queryStateFn
+type queryStateFn func(*query, *Eval, *Item) queryStateFn
 
 type query struct {
 	path
-	state  *Eval
-	next   queryStateFn
-	last   int
-	buffer bytes.Buffer
-	result *Result
-	valLoc stack
+	state       queryStateFn
+	start       int
+	pos         int
+	firstType   int // first json token type in buffer
+	buffer      bytes.Buffer
+	resultQueue *Results
+	valLoc      stack // capture the current location stack at capture
+	errors      []error
+	buckets     stack // stack of exprBucket
 }
 
-type key string
-type index int
+type exprBucket struct {
+	operatorLoc int
+	expression  []Item
+	queries     []*query
+	results     *Results
+}
+
+type evalStateFn func(*Eval, *Item) evalStateFn
 
 type Eval struct {
 	tr         tokenReader
@@ -64,17 +57,9 @@ func newEvaluation(tr tokenReader, paths ...*path) *Eval {
 	}
 
 	for _, p := range paths {
-		e.queries[p.stringValue] = &query{
-			path:   *p,
-			state:  e,
-			next:   pathMatchNextOp,
-			last:   -1,
-			buffer: *bytes.NewBuffer(make([]byte, 0, 50)),
-			valLoc: *newStack(),
-		}
+		e.queries[p.stringValue] = newQuery(p)
 	}
-
-	// Determine whether to copy item values from lexer
+	// Determine whether to copy emitted item values ([]byte) from lexer
 	switch tr.(type) {
 	case *readerLexer:
 		e.copyValues = true
@@ -83,6 +68,20 @@ func newEvaluation(tr tokenReader, paths ...*path) *Eval {
 	}
 
 	return e
+}
+
+func newQuery(p *path) *query {
+	return &query{
+		path:        *p,
+		state:       pathMatchOp,
+		start:       -1,
+		pos:         -1,
+		buffer:      *bytes.NewBuffer(make([]byte, 0, 50)),
+		valLoc:      *newStack(),
+		errors:      make([]error, 0),
+		resultQueue: newResults(),
+		buckets:     *newStack(),
+	}
 }
 
 func (e *Eval) Iterate() (*Results, bool) {
@@ -99,20 +98,25 @@ func (e *Eval) Iterate() (*Results, bool) {
 	anyRunning := false
 	// run path function for each path
 	for str, query := range e.queries {
-		// safety check
-		if query.next != nil {
-			anyRunning = true
-			query.next = query.next(query, t)
-			if query.next == nil {
-				delete(e.queries, str)
-			}
-
-			if query.result != nil {
-				e.resultQueue.push(query.result)
-				query.result = nil
-			}
-		} else {
+		anyRunning = true
+		query.state = query.state(query, e, t)
+		if query.state == nil {
 			delete(e.queries, str)
+		}
+
+		if query.resultQueue.len() > 0 {
+			e.resultQueue.push(query.resultQueue.Pop())
+		}
+
+		for _, b := range query.buckets.values {
+			bucket := b.(exprBucket)
+			for _, dq := range bucket.queries {
+				dq.state = dq.state(dq, e, t)
+
+				if query.resultQueue.len() > 0 {
+					e.resultQueue.push(query.resultQueue.Pop())
+				}
+			}
 		}
 	}
 
@@ -145,225 +149,98 @@ func (e *Eval) Next() (*Result, bool) {
 	return nil, false
 }
 
-type evalStateFn func(*Eval, *Item) evalStateFn
-
-func evalRoot(e *Eval, i *Item) evalStateFn {
-	switch i.typ {
-	case jsonBraceLeft:
-		e.levelStack.push(i.typ)
-		return evalObjectAfterOpen
-	case jsonBracketLeft:
-		e.levelStack.push(i.typ)
-		return evalArrayAfterOpen
-	case jsonError:
-		return evalError(e, i)
-	default:
-		e.Error = errors.New(UnexpectedToken)
-	}
-	return nil
+func (q *query) loc() int {
+	return abs(q.pos-q.start) + q.start
 }
 
-func evalObjectAfterOpen(e *Eval, i *Item) evalStateFn {
-	switch i.typ {
-	case jsonKey:
-		c := i.val[1 : len(i.val)-1]
-		if e.copyValues {
-			d := make([]byte, len(c))
-			copy(d, c)
-			c = d
-		}
-		e.nextKey = c
-		return evalObjectColon
-	case jsonBraceRight:
-		return rightBraceOrBracket(e)
-	case jsonError:
-		return evalError(e, i)
-	default:
-		e.Error = errors.New(UnexpectedToken)
-	}
-	return nil
-}
+func (q *query) trySpillOver() {
+	if b, ok := q.buckets.peek(); ok {
+		bucket := b.(exprBucket)
+		if q.loc() < bucket.operatorLoc {
+			q.buckets.pop()
 
-func evalObjectColon(e *Eval, i *Item) evalStateFn {
-	switch i.typ {
-	case jsonColon:
-		return evalObjectValue
-	case jsonError:
-		return evalError(e, i)
-	default:
-		e.Error = errors.New(UnexpectedToken)
-	}
-
-	return nil
-}
-
-func evalObjectValue(e *Eval, i *Item) evalStateFn {
-	e.location.push(e.nextKey)
-
-	switch i.typ {
-	case jsonNull, jsonNumber, jsonString, jsonBool:
-		return evalObjectAfterValue
-	case jsonBraceLeft:
-		e.levelStack.push(i.typ)
-		return evalObjectAfterOpen
-	case jsonBracketLeft:
-		e.levelStack.push(i.typ)
-		return evalArrayAfterOpen
-	case jsonError:
-		return evalError(e, i)
-	default:
-		e.Error = errors.New(UnexpectedToken)
-	}
-	return nil
-}
-
-func evalObjectAfterValue(e *Eval, i *Item) evalStateFn {
-	e.location.pop()
-	switch i.typ {
-	case jsonComma:
-		return evalObjectAfterOpen
-	case jsonBraceRight:
-		return rightBraceOrBracket(e)
-	case jsonError:
-		return evalError(e, i)
-	default:
-		e.Error = errors.New(UnexpectedToken)
-	}
-	return nil
-}
-
-func rightBraceOrBracket(e *Eval) evalStateFn {
-	e.levelStack.pop()
-
-	lowerTyp, ok := e.levelStack.peek()
-	if !ok {
-		return evalRootEnd
-	} else {
-		switch lowerTyp {
-		case jsonBraceLeft:
-			return evalObjectAfterValue
-		case jsonBracketLeft:
-			return evalArrayAfterValue
-		}
-	}
-	return nil
-}
-
-func evalArrayAfterOpen(e *Eval, i *Item) evalStateFn {
-	e.prevIndex = -1
-
-	switch i.typ {
-	case jsonNull, jsonNumber, jsonString, jsonBool, jsonBraceLeft, jsonBracketLeft:
-		return evalArrayValue(e, i)
-	case jsonBracketRight:
-		setPrevIndex(e)
-		return rightBraceOrBracket(e)
-	case jsonError:
-		return evalError(e, i)
-	default:
-		e.Error = errors.New(UnexpectedToken)
-	}
-	return nil
-}
-
-func evalArrayValue(e *Eval, i *Item) evalStateFn {
-	e.prevIndex++
-	e.location.push(e.prevIndex)
-
-	switch i.typ {
-	case jsonNull, jsonNumber, jsonString, jsonBool:
-		return evalArrayAfterValue
-	case jsonBraceLeft:
-		e.levelStack.push(i.typ)
-		return evalObjectAfterOpen
-	case jsonBracketLeft:
-		e.levelStack.push(i.typ)
-		return evalArrayAfterOpen
-	case jsonError:
-		return evalError(e, i)
-	default:
-		e.Error = errors.New(UnexpectedToken)
-	}
-	return nil
-}
-
-func evalArrayAfterValue(e *Eval, i *Item) evalStateFn {
-	switch i.typ {
-	case jsonComma:
-		if val, ok := e.location.pop(); ok {
-			if valIndex, ok := val.(int); ok {
-				e.prevIndex = valIndex
+			exprRes, err := bucket.evaluate()
+			if err != nil {
+				q.errors = append(q.errors, err)
+			}
+			if exprRes {
+				next, ok := q.buckets.peek()
+				var spillover *Results
+				if !ok {
+					// fmt.Println("Spilling over into end queue")
+					spillover = q.resultQueue
+				} else {
+					// fmt.Println("Spilling over into lower bucket")
+					nextBucket := next.(exprBucket)
+					spillover = nextBucket.results
+				}
+				for {
+					v := bucket.results.Pop()
+					if v != nil {
+						spillover.push(v)
+					} else {
+						break
+					}
+				}
 			}
 		}
-		return evalArrayValue
-	case jsonBracketRight:
-		e.location.pop()
-		setPrevIndex(e)
-		return rightBraceOrBracket(e)
-	case jsonError:
-		return evalError(e, i)
-	default:
-		e.Error = errors.New(UnexpectedToken)
-	}
-	return nil
-}
-
-func setPrevIndex(e *Eval) {
-	e.prevIndex = -1
-	peeked, ok := e.location.peek()
-	if ok {
-		if peekedIndex, intOk := peeked.(int); intOk {
-			e.prevIndex = peekedIndex
-		}
 	}
 }
 
-func evalRootEnd(e *Eval, i *Item) evalStateFn {
-	if i.typ != jsonEOF {
-		if i.typ == jsonError {
-			evalError(e, i)
-		} else {
-			e.Error = errors.New(BadStructure)
-		}
-	}
-	return nil
-}
+func pathMatchOp(q *query, e *Eval, i *Item) queryStateFn {
+	curLocation := e.location.len() - 1
 
-func evalError(e *Eval, i *Item) evalStateFn {
-	e.Error = fmt.Errorf("%s at byte index %d", string(i.val), i.pos)
-	return nil
-}
+	if q.loc() > curLocation {
+		q.pos -= 1
+		q.trySpillOver()
+	} else if q.loc() <= curLocation {
+		if q.loc() == curLocation-1 {
+			if len(q.operators)+q.start >= curLocation {
+				current, _ := e.location.peek()
+				nextOp := q.operators[abs(q.loc()-q.start)]
+				if itemMatchOperator(current, i, nextOp) {
+					q.pos += 1
 
-func pathMatchNextOp(q *query, i *Item) queryStateFn {
-	if q.last > q.state.location.len()-1 {
-		q.last -= 1
-		return pathMatchNextOp
-	}
+					if nextOp.whereClauseBytes != nil && len(nextOp.whereClause) > 0 {
+						bucket := exprBucket{
+							operatorLoc: q.loc(),
+							expression:  nextOp.whereClause,
+							queries:     make([]*query, len(nextOp.dependentPaths)),
+							results:     newResults(),
+						}
 
-	if q.last == q.state.location.len()-2 {
-		nextOp := q.operators[q.last+1]
-		current, ok := q.state.location.peek()
-		if ok {
-			if itemMatchOperator(current, i, nextOp) {
-				// printLoc(q.state.location.toArray())
-				q.last += 1
+						for i, p := range nextOp.dependentPaths {
+							bucket.queries[i] = newQuery(p)
+							bucket.queries[i].pos = q.loc()
+							bucket.queries[i].start = q.loc()
+							bucket.queries[i].captureEndValue = true
+						}
+						q.buckets.push(bucket)
+					}
+				}
+
 			}
 		}
 	}
 
-	if q.last == len(q.operators)-1 {
+	if q.loc() == len(q.operators)+q.start && q.loc() <= curLocation {
 		if q.captureEndValue {
+			q.firstType = i.typ
 			q.buffer.Write(i.val)
 		}
-		q.valLoc = *q.state.location.clone()
+		q.valLoc = *e.location.clone()
 		return pathEndValue
 	}
 
-	return pathMatchNextOp
+	if q.loc() < -1 {
+		return nil
+	} else {
+		return pathMatchOp
+	}
 }
 
-func pathEndValue(q *query, i *Item) queryStateFn {
-	if q.state.location.len() >= q.valLoc.len() {
+func pathEndValue(q *query, e *Eval, i *Item) queryStateFn {
+	if e.location.len()-1 >= q.loc() {
 		if q.captureEndValue {
 			q.buffer.Write(i.val)
 		}
@@ -374,29 +251,65 @@ func pathEndValue(q *query, i *Item) queryStateFn {
 			copy(val, q.buffer.Bytes())
 			r.Value = val
 
-			switch r.Value[0] {
-			case '{':
+			switch q.firstType {
+			case jsonBraceLeft:
 				r.Type = JsonObject
-			case '"':
+			case jsonString:
 				r.Type = JsonString
-			case '[':
+			case jsonBracketLeft:
 				r.Type = JsonArray
-			case 'n':
+			case jsonNull:
 				r.Type = JsonNull
-			case 't', 'b':
+			case jsonBool:
 				r.Type = JsonBool
-			default:
+			case jsonNumber:
 				r.Type = JsonNumber
+			default:
+				r.Type = -1
 			}
 		}
-		q.result = r
+
+		if q.buckets.len() == 0 {
+			q.resultQueue.push(r)
+		} else {
+			b, _ := q.buckets.peek()
+			b.(exprBucket).results.push(r)
+		}
 
 		q.valLoc = *newStack()
 		q.buffer.Truncate(0)
-		q.last -= 1
-		return pathMatchNextOp
+		q.pos -= 1
+		return pathMatchOp
 	}
 	return pathEndValue
+}
+
+func (b *exprBucket) evaluate() (bool, error) {
+	values := make(map[string]Item)
+	for _, q := range b.queries {
+		result := q.resultQueue.Pop()
+		if result != nil {
+			t, err := getJsonTokenType(result.Value)
+			if err != nil {
+				return false, err
+			}
+			i := Item{
+				typ: t,
+				val: result.Value,
+			}
+			values[q.path.stringValue] = i
+		}
+	}
+
+	res, err := evaluatePostFix(b.expression, values)
+	if err != nil {
+		return false, err
+	}
+	res_bool, ok := res.(bool)
+	if !ok {
+		return false, fmt.Errorf(exprErrorFinalValueNotBool, res)
+	}
+	return res_bool, nil
 }
 
 func itemMatchOperator(loc interface{}, i *Item, op *operator) bool {
@@ -419,40 +332,4 @@ func itemMatchOperator(loc interface{}, i *Item, op *operator) bool {
 		}
 	}
 	return false
-}
-
-func (r *Result) Pretty(showPath bool) string {
-	b := bytes.NewBufferString("")
-	printed := false
-	if showPath {
-		for _, k := range r.Keys {
-			switch v := k.(type) {
-			case int:
-				b.WriteString(fmt.Sprintf("%d", v))
-			default:
-				b.WriteString(fmt.Sprintf("%q", v))
-			}
-			b.WriteRune('\t')
-			printed = true
-		}
-	} else if r.Value == nil {
-		if len(r.Keys) > 0 {
-			printed = true
-			switch v := r.Keys[len(r.Keys)-1].(type) {
-			case int:
-				b.WriteString(fmt.Sprintf("%d", v))
-			default:
-				b.WriteString(fmt.Sprintf("%q", v))
-			}
-		}
-	}
-
-	if r.Value != nil {
-		printed = true
-		b.WriteString(fmt.Sprintf("%s", r.Value))
-	}
-	if printed {
-		b.WriteRune('\n')
-	}
-	return b.String()
 }

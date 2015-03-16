@@ -5,6 +5,7 @@ const (
 	pathEOF
 
 	pathRoot
+	pathCurrent
 	pathKey
 	pathBracketLeft
 	pathBracketRight
@@ -15,6 +16,8 @@ const (
 	pathWildcard
 	pathPeriod
 	pathValue
+	pathWhere
+	pathExpression
 )
 
 var pathTokenNames = map[int]string{
@@ -22,6 +25,7 @@ var pathTokenNames = map[int]string{
 	pathEOF:   "EOF",
 
 	pathRoot:         "$",
+	pathCurrent:      "@",
 	pathKey:          "KEY",
 	pathBracketLeft:  "[",
 	pathBracketRight: "]",
@@ -32,17 +36,23 @@ var pathTokenNames = map[int]string{
 	pathWildcard:     "*",
 	pathPeriod:       ".",
 	pathValue:        "+",
+	pathWhere:        "?",
+	pathExpression:   "EXPRESSION",
 }
 
-var PATH = lexPathRoot
+var PATH = lexPathStart
 
-func lexPathRoot(l lexer, state *intStack) stateFn {
+func lexPathStart(l lexer, state *intStack) stateFn {
 	ignoreSpaceRun(l)
 	cur := l.take()
-	if cur != '$' {
-		return l.errorf("Expected $ at start of path instead of  %#U", cur)
+	switch cur {
+	case '$':
+		l.emit(pathRoot)
+	case '@':
+		l.emit(pathCurrent)
+	default:
+		return l.errorf("Expected $ or @ at start of path instead of  %#U", cur)
 	}
-	l.emit(pathRoot)
 
 	return lexPathAfterKey
 }
@@ -59,12 +69,41 @@ func lexPathAfterKey(l lexer, state *intStack) stateFn {
 	case '+':
 		l.emit(pathValue)
 		return lexPathAfterValue
+	case '?':
+		l.emit(pathWhere)
+		return lexPathExpression
 	case eof:
 		l.emit(pathEOF)
 	default:
 		return l.errorf("Unrecognized rune after path element %#U", cur)
 	}
 	return nil
+}
+
+func lexPathExpression(l lexer, state *intStack) stateFn {
+	cur := l.take()
+	if cur != '(' {
+		return l.errorf("Expected $ at start of path instead of  %#U", cur)
+	}
+
+	parenLeftCount := 1
+	for {
+		cur = l.take()
+		switch cur {
+		case '(':
+			parenLeftCount++
+		case ')':
+			parenLeftCount--
+		case eof:
+			return l.errorf("Unexpected EOF within expression")
+		}
+
+		if parenLeftCount == 0 {
+			break
+		}
+	}
+	l.emit(pathExpression)
+	return lexPathAfterKey
 }
 
 func lexPathBracketOpen(l lexer, state *intStack) stateFn {
@@ -115,7 +154,7 @@ func lexKey(l lexer, state *intStack) stateFn {
 	default:
 		for {
 			v := l.peek()
-			if v == '.' || v == '[' || v == '+' || v == eof {
+			if v == '.' || v == '[' || v == '+' || v == '?' || v == eof {
 				break
 			}
 			l.take()

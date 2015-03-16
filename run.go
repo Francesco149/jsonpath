@@ -34,12 +34,3 @@ func genPaths(pathStrings []string) ([]*path, error) {
 	}
 	return paths, nil
 }
-
-// func Iterate(l lexer) {
-// 	for {
-// 		_, ok := l.next()
-// 		if !ok {
-// 			break
-// 		}
-// 	}
-// }

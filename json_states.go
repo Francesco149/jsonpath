@@ -224,7 +224,7 @@ func stateJsonString(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonNumber(l lexer, state *intStack) stateFn {
-	if err := takeNumeric(l); err != nil {
+	if err := takeJSONNumeric(l); err != nil {
 		return l.errorf(err.Error())
 	}
 	l.emit(jsonNumber)

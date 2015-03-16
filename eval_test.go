@@ -37,6 +37,9 @@ var tests = []test{
 	test{`multi-level object/array`, `{"1Key":{"aKey": null, "bKey":{"trash":[1,2]}, "cKey":[123,456] }, "2Key":false}`, `$.1Key.bKey.trash[0]+`, []Result{newResult(`1`, JsonNumber, `1Key`, `bKey`, `trash`, 0)}},
 	test{`multi-level array`, `{"aKey":[true,false,null,{"michael":[5,6,7]}, ["s", "3"] ]}`, `$.*[*].michael[1]+`, []Result{newResult(`6`, JsonNumber, `aKey`, 3, `michael`, 1)}},
 	test{`multi-level array 2`, `{"aKey":[true,false,null,{"michael":[5,6,7]}, ["s", "3"] ]}`, `$.*[*][1]+`, []Result{newResult(`"3"`, JsonString, `aKey`, 4, 1)}},
+
+	test{`evaluation literal equality`, `{"items":[ {"name":"alpha", "value":11}]}`, `$.items[*]?("bravo" == "bravo").value+`, []Result{newResult(`11`, JsonNumber, `items`, 0, `value`)}},
+	test{`evaluation based on string equal to path value`, `{"items":[ {"name":"alpha", "value":11}, {"name":"bravo", "value":22}, {"name":"charlie", "value":33} ]}`, `$.items[*]?(@.name == "bravo").value+`, []Result{newResult(`22`, JsonNumber, `items`, 1, `value`)}},
 }
 
 func TestPathQuery(t *testing.T) {
@@ -46,11 +49,7 @@ func TestPathQuery(t *testing.T) {
 		eval, err := EvalPathsInBytes([]byte(t.json), t.path)
 		as.NoError(err, "Testing: %s", t.name)
 		res := toResultArray(eval)
-		// fmt.Println("--------")
-		// for _, r := range res {
-		// 	PrintResult(r, true)
-		// }
-		// fmt.Println("--------")
+
 		as.NoError(eval.Error)
 		as.Equal(t.expected, res, "Testing of %q", t.name)
 	}

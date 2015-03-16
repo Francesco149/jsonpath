@@ -23,12 +23,14 @@ type path struct {
 }
 
 type operator struct {
-	typ int
-
+	typ        int
 	indexStart int
 	indexEnd   int
-
 	keyStrings map[string]struct{}
+
+	whereClauseBytes []byte
+	dependentPaths   []*path
+	whereClause      []Item
 }
 
 func genIndexKey(tr tokenReader) (*operator, error) {
@@ -105,15 +107,46 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 
 func parsePath(pathString string) (*path, error) {
 	lexer := NewSliceLexer([]byte(pathString), PATH)
-	p, err := generatePath(lexer)
+	p, err := tokensToOperators(lexer)
 	if err != nil {
 		return nil, err
 	}
+
 	p.stringValue = pathString
+
+	//Generate dependent paths
+	for _, op := range p.operators {
+		if len(op.whereClauseBytes) > 0 {
+			var err error
+			trimmed := op.whereClauseBytes[1 : len(op.whereClauseBytes)-1]
+			whereLexer := NewSliceLexer(trimmed, EXPRESSION)
+			items := readerToArray(whereLexer)
+			if errItem, found := findErrors(items); found {
+				return nil, errors.New(string(errItem.val))
+			}
+
+			// transform expression into postfix form
+			op.whereClause, err = infixToPostFix(items[:len(items)-1]) // trim EOF
+			if err != nil {
+				return nil, err
+			}
+			op.dependentPaths = make([]*path, 0)
+			// parse all paths in expression
+			for _, item := range op.whereClause {
+				if item.typ == exprPath {
+					p, err := parsePath(string(item.val))
+					if err != nil {
+						return nil, err
+					}
+					op.dependentPaths = append(op.dependentPaths, p)
+				}
+			}
+		}
+	}
 	return p, nil
 }
 
-func generatePath(tr tokenReader) (*path, error) {
+func tokensToOperators(tr tokenReader) (*path, error) {
 	q := &path{
 		stringValue:     "",
 		captureEndValue: false,
@@ -127,7 +160,12 @@ func generatePath(tr tokenReader) (*path, error) {
 		switch p.typ {
 		case pathRoot:
 			if len(q.operators) != 0 {
-				return nil, errors.New("Unexpected root after start")
+				return nil, errors.New("Unexpected root node after start")
+			}
+			continue
+		case pathCurrent:
+			if len(q.operators) != 0 {
+				return nil, errors.New("Unexpected current node after start")
 			}
 			continue
 		case pathPeriod:
@@ -148,6 +186,16 @@ func generatePath(tr tokenReader) (*path, error) {
 			q.operators = append(q.operators, &operator{typ: opTypeNameWild})
 		case pathValue:
 			q.captureEndValue = true
+		case pathWhere:
+		case pathExpression:
+			if len(q.operators) == 0 {
+				return nil, errors.New("Cannot add where clause on last key")
+			}
+			last := q.operators[len(q.operators)-1]
+			if last.whereClauseBytes != nil {
+				return nil, errors.New("Expression on last key already set")
+			}
+			last.whereClauseBytes = p.val
 		case pathError:
 			return q, errors.New(string(p.val))
 		}
