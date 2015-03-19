@@ -47,9 +47,9 @@ var opa = map[int]struct {
 	exprOpStar:    {5, false},
 	exprOpPercent: {5, false},
 	exprOpHat:     {6, false},
-	exprOpNot:     {7, false},
-	exprOpPlusUn:  {7, false},
-	exprOpMinusUn: {7, false},
+	exprOpNot:     {7, true},
+	exprOpPlusUn:  {7, true},
+	exprOpMinusUn: {7, true},
 }
 
 // Shunting-yard Algorithm (infix -> postfix)
