@@ -178,8 +178,6 @@ func lexPathIndexRange(l lexer, state *intStack) stateFn {
 	default:
 		return l.errorf("Expected digit or ] instead of  %#U", cur)
 	}
-
-	return lexPathArrayClose
 }
 
 func lexPathIndexRangeSecond(l lexer, state *intStack) stateFn {
