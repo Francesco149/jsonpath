@@ -61,6 +61,11 @@ All paths start from the root node `$`.  Similar to getting properties in a Java
 `+` = get value at end of path  
 `?(expression)` = where clause (expression can reference current json node with @)
   
+EXPRESSION   
+`@` = current node  
+example:  
+?(@.value > 10)  
+   
 Example: 
 ```javascript
 {  
