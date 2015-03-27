@@ -104,7 +104,7 @@ func (l *sliceLexer) ignore() {
 func (l *sliceLexer) next() (*Item, bool) {
 	for {
 		if l.currentStateFn == nil {
-			return &l.item, false
+			break
 		}
 
 		l.currentStateFn = l.currentStateFn(l, &l.stack)

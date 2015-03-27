@@ -91,11 +91,17 @@ func (l *readerLexer) emit(t int) {
 	l.pos += Pos(l.lexeme.Len())
 	l.hasItem = true
 
+	if t == lexEOF {
+		// Do not capture eof character to match slice_lexer
+		l.item.val = []byte{}
+	}
+
 	// Ignore whitespace after this token
 	if l.nextByte == noValue {
 		l.peek()
 	}
 
+	// ignore white space
 	for l.nextByte != eof {
 		if l.nextByte == ' ' || l.nextByte == '\t' || l.nextByte == '\r' || l.nextByte == '\n' {
 			l.pos++
@@ -126,7 +132,7 @@ func (l *readerLexer) next() (*Item, bool) {
 	l.lexeme.Reset()
 	for {
 		if l.currentStateFn == nil {
-			return &l.item, false
+			break
 		}
 
 		l.currentStateFn = l.currentStateFn(l, &l.stack)

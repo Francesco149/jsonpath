@@ -120,46 +120,49 @@ func stateJsonArray(l lexer, state *intStack) stateFn {
 func stateJsonAfterValue(l lexer, state *intStack) stateFn {
 	cur := l.take()
 	top, ok := state.peek()
-	val := noValue
+	topVal := noValue
 	if ok {
-		val = top
+		topVal = top
 	}
 
 	switch cur {
 	case ',':
 		l.emit(jsonComma)
-		switch val {
+		switch topVal {
 		case jsonBraceLeft:
 			return stateJsonKey
 		case jsonBracketLeft:
 			return stateJsonValue
+		case noValue:
+			return l.errorf("Found %#U outside of array or object", cur)
 		default:
 			return l.errorf("Unexpected character in lexer stack: %#U", cur)
 		}
 	case '}':
 		l.emit(jsonBraceRight)
 		state.pop()
-		switch val {
+		switch topVal {
 		case jsonBraceLeft:
 			return stateJsonAfterValue
 		case jsonBracketLeft:
-			return l.errorf("Unexpected } in array")
+			return l.errorf("Unexpected %#U in array", cur)
 		case noValue:
-			return nil
+			return stateJsonAfterRoot
 		}
 	case ']':
 		l.emit(jsonBracketRight)
 		state.pop()
-		switch val {
+		switch topVal {
 		case jsonBraceLeft:
-			return l.errorf("Unexpected ] in object")
+			return l.errorf("Unexpected %#U in object", cur)
 		case jsonBracketLeft:
 			return stateJsonAfterValue
 		case noValue:
-			return nil
+			return stateJsonAfterRoot
 		}
 	case eof:
 		if state.len() == 0 {
+			l.emit(jsonEOF)
 			return nil
 		} else {
 			return l.errorf("Unexpected EOF instead of value")
@@ -221,7 +224,7 @@ func stateJsonString(l lexer, state *intStack) stateFn {
 }
 
 func stateJsonNumber(l lexer, state *intStack) stateFn {
-	if err := takeNumeric(l); err != nil {
+	if err := takeJSONNumeric(l); err != nil {
 		return l.errorf(err.Error())
 	}
 	l.emit(jsonNumber)
@@ -251,4 +254,13 @@ func stateJsonNull(l lexer, state *intStack) stateFn {
 	}
 	l.emit(jsonNull)
 	return stateJsonAfterValue
+}
+
+func stateJsonAfterRoot(l lexer, state *intStack) stateFn {
+	cur := l.take()
+	if cur != eof {
+		return l.errorf("Expected EOF instead of %#U", cur)
+	}
+	l.emit(jsonEOF)
+	return nil
 }

@@ -26,26 +26,27 @@ cat yourData.json | jsonpath -k -p '$.Items[*].title+'
 go get github.com/NodePrime/jsonpath  
   
 ```go
-eval, err := jsonpath.GetPathsInBytes(json []byte, pathStrings ...string) (*jsonpath.eval, error)
+eval, err := jsonpath.GetPathsInBytes(json []byte, pathStrings ...string) (*jsonpath.Eval, error)
 ```
 or 
 ```go
-eval, err := jsonpath.GetPathsInReader(r io.Reader, pathStrings ...string) (*jsonpath.eval, error)
+eval, err := jsonpath.GetPathsInReader(r io.Reader, pathStrings ...string) (*jsonpath.Eval, error)
 ```
 
 then
 ```go
-for r := range eval.Results {
-	// skip keys/indexes & get final byte data
-	fmt.Println(r[len(r)-1].([]byte]))	
+for {
+	if result, ok := eval.Next(); ok {
+		fmt.Println(result.Pretty(true)) // true -> show keys in pretty string
+	}
 }
 if eval.Error != nil {
 	return eval.Error
 }
-```
-^ this interface may change   
-  
-   
+```  
+
+`eval.Next()` will traverse JSON until another value is found.  This has the potential of traversing the entire JSON document in an attempt to find one.  If you prefer to have more control over traversing, use the `eval.Iterate()` method.  It will return after every scanned JSON token and return `([]*Result, bool)`.  This array will usually be empty, but occasionally contain results.  
+     
 ### Path Syntax  
 All paths start from the root node `$`.  Similar to getting properties in a JavaScript object, a period `.` or brackets `[ .. ]` are used.  
   
@@ -54,12 +55,17 @@ All paths start from the root node `$`.  Similar to getting properties in a Java
 `["abc"]` = quoted property name  
 `*` = wildcard property name  
 `[n]` = Nth index of array  
-`[n:m]` = Nth index to m-1 index (same as Go Slicing)  
+`[n:m]` = Nth index to m-1 index (same as Go slicing)  
 `[n:]` = Nth index to end of array  
 `[*]` = wildcard index of array  
 `+` = get value at end of path  
-
+`?(expression)` = where clause (expression can reference current json node with @)
   
+EXPRESSION   
+`@` = current node  
+example:  
+?(@.value > 10)  
+   
 Example: 
 ```javascript
 {  
@@ -86,7 +92,9 @@ Example:
 	
 Example Paths:   
 *CLI*  
-`jsonpath --file=example.json --path='$.Items[*].tags[*]+' --keys`  
+```shell
+jsonpath --file=example.json --path='$.Items[*].tags[*]+' --keys
+```   
 "Items"	0	"tags"	0	"comedy"  
 "Items"	0	"tags"	1	"shakespeare"  
 "Items"	0	"tags"	2	"play"  
@@ -94,7 +102,7 @@ Example Paths:
 "Items"	1	"tags"	1	"revolution"  
 "Items"	1	"tags"	2	"london"  
   
-*Package*  
+*Paths*  
 `$.Items[*].title+`   
 ... "A Midsummer Night's Dream"   
 ... "A Tale of Two Cities"   
@@ -112,9 +120,3 @@ Example Paths:
 ...  "london"  
   
 ... = keys/indexes of path  
-  
-  
-### TODO  
-*Expressions*  
-`?(expression)`  
-Ex: `$.Items[*]?(title=='A Tale of Two Cities').tags+`  

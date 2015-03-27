@@ -5,6 +5,7 @@ type stateFn func(lexer, *intStack) stateFn
 
 const (
 	lexError = 0 // must match jsonError and pathError
+	lexEOF   = 1
 	eof      = -1
 	noValue  = -2
 )
@@ -74,4 +75,12 @@ func itemDescription(item *Item, nameMap map[int]string) string {
 		return string(item.val)
 	}
 	return val
+}
+
+func typesDescription(types []int, nameMap map[int]string) []string {
+	vals := make([]string, len(types))
+	for i, val := range types {
+		vals[i] = nameMap[val]
+	}
+	return vals
 }
