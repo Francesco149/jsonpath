@@ -178,6 +178,9 @@ func tokensToOperators(tr tokenReader) (*path, error) {
 			q.operators = append(q.operators, k)
 		case pathKey:
 			keyName := p.val
+			if len(p.val) == 0 {
+				return nil, fmt.Errorf("Key length is zero at %d", p.pos)
+			}
 			if p.val[0] == '"' && p.val[len(p.val)-1] == '"' {
 				keyName = p.val[1 : len(p.val)-1]
 			}
