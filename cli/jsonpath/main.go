@@ -11,10 +11,10 @@ import (
 )
 
 func main() {
-	var paths pathSlice
+	var pathStrings pathSlice
 	filePtr := flag.StringP("file", "f", "", "Path to json file")
 	jsonPtr := flag.StringP("json", "j", "", "JSON text")
-	flag.VarP(&paths, "path", "p", "One or more paths to target in JSON")
+	flag.VarP(&pathStrings, "path", "p", "One or more paths to target in JSON")
 	showKeysPtr := flag.BoolP("keys", "k", false, "Print keys & indexes that lead to value")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
@@ -23,8 +23,14 @@ func main() {
 	}
 	flag.Parse()
 
-	if len(paths) == 0 {
+	if len(pathStrings) == 0 {
 		fmt.Println("Must specify one or more paths with the --path flag")
+		os.Exit(1)
+	}
+
+	paths, err := jsonpath.ParsePaths(pathStrings...)
+	if err != nil {
+		fmt.Println(fmt.Errorf("Failed to parse paths: %q", err.Error()))
 		os.Exit(1)
 	}
 
@@ -35,20 +41,20 @@ func main() {
 			os.Exit(1)
 		}
 
-		eval, err := jsonpath.EvalPathsInReader(f, paths...)
+		eval, err := jsonpath.EvalPathsInReader(f, paths)
 		checkAndHandleError(err)
 		run(eval, *showKeysPtr)
 		checkAndHandleError(eval.Error)
 		f.Close()
 
 	} else if jsonPtr != nil && *jsonPtr != "" {
-		eval, err := jsonpath.EvalPathsInBytes([]byte(*jsonPtr), paths...)
+		eval, err := jsonpath.EvalPathsInBytes([]byte(*jsonPtr), paths)
 		checkAndHandleError(err)
 		run(eval, *showKeysPtr)
 		checkAndHandleError(eval.Error)
 	} else {
 		reader := bufio.NewReader(os.Stdin)
-		eval, err := jsonpath.EvalPathsInReader(reader, paths...)
+		eval, err := jsonpath.EvalPathsInReader(reader, paths)
 		checkAndHandleError(err)
 		run(eval, *showKeysPtr)
 		checkAndHandleError(eval.Error)

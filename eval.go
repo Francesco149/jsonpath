@@ -8,7 +8,7 @@ import (
 type queryStateFn func(*query, *Eval, *Item) queryStateFn
 
 type query struct {
-	path
+	Path
 	state       queryStateFn
 	start       int
 	pos         int
@@ -43,7 +43,7 @@ type Eval struct {
 	Error       error
 }
 
-func newEvaluation(tr tokenReader, paths ...*path) *Eval {
+func newEvaluation(tr tokenReader, paths ...*Path) *Eval {
 	e := &Eval{
 		tr:          tr,
 		location:    *newStack(),
@@ -70,9 +70,9 @@ func newEvaluation(tr tokenReader, paths ...*path) *Eval {
 	return e
 }
 
-func newQuery(p *path) *query {
+func newQuery(p *Path) *query {
 	return &query{
-		path:        *p,
+		Path:        *p,
 		state:       pathMatchOp,
 		start:       -1,
 		pos:         -1,
@@ -297,7 +297,7 @@ func (b *exprBucket) evaluate() (bool, error) {
 				typ: t,
 				val: result.Value,
 			}
-			values[q.path.stringValue] = i
+			values[q.Path.stringValue] = i
 		}
 	}
 
