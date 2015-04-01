@@ -2,29 +2,20 @@ package jsonpath
 
 import "io"
 
-func EvalPathsInBytes(input []byte, pathStrings ...string) (*Eval, error) {
-	paths, err := genPaths(pathStrings)
-	if err != nil {
-		return nil, err
-	}
+func EvalPathsInBytes(input []byte, paths []*Path) (*Eval, error) {
 	lexer := NewSliceLexer(input, JSON)
 	eval := newEvaluation(lexer, paths...)
 	return eval, nil
 }
 
-func EvalPathsInReader(r io.Reader, pathStrings ...string) (*Eval, error) {
-	paths, err := genPaths(pathStrings)
-	if err != nil {
-		return nil, err
-	}
-
+func EvalPathsInReader(r io.Reader, paths []*Path) (*Eval, error) {
 	lexer := NewReaderLexer(r, JSON)
 	eval := newEvaluation(lexer, paths...)
 	return eval, nil
 }
 
-func genPaths(pathStrings []string) ([]*path, error) {
-	paths := make([]*path, len(pathStrings))
+func ParsePaths(pathStrings ...string) ([]*Path, error) {
+	paths := make([]*Path, len(pathStrings))
 	for x, p := range pathStrings {
 		path, err := parsePath(p)
 		if err != nil {

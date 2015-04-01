@@ -24,20 +24,24 @@ cat yourData.json | jsonpath -k -p '$.Items[*].title+'
   
 ### Go Package  
 go get github.com/NodePrime/jsonpath  
-  
+ 
 ```go
-eval, err := jsonpath.GetPathsInBytes(json []byte, pathStrings ...string) (*jsonpath.Eval, error)
-```
-or 
+paths, err := jsonpath.ParsePaths(pathStrings ...string) {
+```  
+
 ```go
-eval, err := jsonpath.GetPathsInReader(r io.Reader, pathStrings ...string) (*jsonpath.Eval, error)
+eval, err := jsonpath.GetPathsInBytes(json []byte, paths) 
+// OR
+eval, err := jsonpath.GetPathsInReader(r io.Reader, paths)
 ```
 
-then
-```go
+then  
+```go  
 for {
 	if result, ok := eval.Next(); ok {
 		fmt.Println(result.Pretty(true)) // true -> show keys in pretty string
+	} else {
+		break
 	}
 }
 if eval.Error != nil {
@@ -61,10 +65,10 @@ All paths start from the root node `$`.  Similar to getting properties in a Java
 `+` = get value at end of path  
 `?(expression)` = where clause (expression can reference current json node with @)
   
-EXPRESSION   
+expression   
 `@` = current node  
 example:  
-?(@.value > 10)  
+`?(@.value > 10)`  
    
 Example: 
 ```javascript

@@ -46,11 +46,14 @@ func TestPathQuery(t *testing.T) {
 	as := assert.New(t)
 
 	for _, t := range tests {
-		eval, err := EvalPathsInBytes([]byte(t.json), t.path)
-		if as.NoError(err, "Testing: %s", t.name) {
-			res := toResultArray(eval)
-			if as.NoError(eval.Error) {
-				as.Equal(t.expected, res, "Testing of %q", t.name)
+		paths, err := ParsePaths(t.path)
+		if as.NoError(err) {
+			eval, err := EvalPathsInBytes([]byte(t.json), paths)
+			if as.NoError(err, "Testing: %s", t.name) {
+				res := toResultArray(eval)
+				if as.NoError(eval.Error) {
+					as.Equal(t.expected, res, "Testing of %q", t.name)
+				}
 			}
 		}
 	}

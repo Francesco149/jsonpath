@@ -16,7 +16,7 @@ const (
 	opTypeNameWild
 )
 
-type path struct {
+type Path struct {
 	stringValue     string
 	operators       []*operator
 	captureEndValue bool
@@ -29,7 +29,7 @@ type operator struct {
 	keyStrings map[string]struct{}
 
 	whereClauseBytes []byte
-	dependentPaths   []*path
+	dependentPaths   []*Path
 	whereClause      []Item
 }
 
@@ -105,7 +105,7 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 	return k, nil
 }
 
-func parsePath(pathString string) (*path, error) {
+func parsePath(pathString string) (*Path, error) {
 	lexer := NewSliceLexer([]byte(pathString), PATH)
 	p, err := tokensToOperators(lexer)
 	if err != nil {
@@ -130,7 +130,7 @@ func parsePath(pathString string) (*path, error) {
 			if err != nil {
 				return nil, err
 			}
-			op.dependentPaths = make([]*path, 0)
+			op.dependentPaths = make([]*Path, 0)
 			// parse all paths in expression
 			for _, item := range op.whereClause {
 				if item.typ == exprPath {
@@ -146,8 +146,8 @@ func parsePath(pathString string) (*path, error) {
 	return p, nil
 }
 
-func tokensToOperators(tr tokenReader) (*path, error) {
-	q := &path{
+func tokensToOperators(tr tokenReader) (*Path, error) {
+	q := &Path{
 		stringValue:     "",
 		captureEndValue: false,
 		operators:       make([]*operator, 0),
@@ -178,6 +178,9 @@ func tokensToOperators(tr tokenReader) (*path, error) {
 			q.operators = append(q.operators, k)
 		case pathKey:
 			keyName := p.val
+			if len(p.val) == 0 {
+				return nil, fmt.Errorf("Key length is zero at %d", p.pos)
+			}
 			if p.val[0] == '"' && p.val[len(p.val)-1] == '"' {
 				keyName = p.val[1 : len(p.val)-1]
 			}
