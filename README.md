@@ -30,9 +30,9 @@ paths, err := jsonpath.ParsePaths(pathStrings ...string) {
 ```  
 
 ```go
-eval, err := jsonpath.GetPathsInBytes(json []byte, paths) 
+eval, err := jsonpath.EvalPathsInBytes(json []byte, paths) 
 // OR
-eval, err := jsonpath.GetPathsInReader(r io.Reader, paths)
+eval, err := jsonpath.EvalPathsInReader(r io.Reader, paths)
 ```
 
 then  
@@ -52,7 +52,7 @@ if eval.Error != nil {
 `eval.Next()` will traverse JSON until another value is found.  This has the potential of traversing the entire JSON document in an attempt to find one.  If you prefer to have more control over traversing, use the `eval.Iterate()` method.  It will return after every scanned JSON token and return `([]*Result, bool)`.  This array will usually be empty, but occasionally contain results.  
      
 ### Path Syntax  
-All paths start from the root node `$`.  Similar to getting properties in a JavaScript object, a period `.` or brackets `[ .. ]` are used.  
+All paths start from the root node `$`.  Similar to getting properties in a JavaScript object, a period `.title` or brackets `["title"]` are used.  
   
 `$` = root  
 `.` = property of  
