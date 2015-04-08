@@ -67,8 +67,9 @@ All paths start from the root node `$`.  Similar to getting properties in a Java
   
 expression   
 `@` = current node  
-example:  
-`?(@.value > 10)`  
+Example: this will only return tags of all items that match this expression.
+`$.Items[*]?(@.title == "A Tale of Two Cities").tags`  
+
    
 Example: 
 ```javascript
