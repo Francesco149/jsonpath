@@ -54,19 +54,30 @@ if eval.Error != nil {
 ### Path Syntax  
 All paths start from the root node `$`.  Similar to getting properties in a JavaScript object, a period `.title` or brackets `["title"]` are used.  
   
-`$` = root  
-`.` = property of  
-`["abc"]` = quoted property name  
-`*` = wildcard property name  
-`[n]` = Nth index of array  
-`[n:m]` = Nth index to m-1 index (same as Go slicing)  
-`[n:]` = Nth index to end of array  
-`[*]` = wildcard index of array  
-`+` = get value at end of path  
-`?(expression)` = where clause (expression can reference current json node with @)
+Syntax|Meaning|Examples
+------|-------|-------
+`$`|root of doc|  
+`.`|property selector |`$.Items`
+`["abc"]`|quoted property selector|`$["Items"]`
+`*`|wildcard property name|`$.*` 
+`[n]`|Nth index of array|`[0]` `[1]`
+`[n:m]`|Nth index to m-1 index (same as Go slicing)|`[0:1]` `[2:5]`
+`[n:]`|Nth index to end of array|`[1:]` `[2:]`
+`[*]`|wildcard index of array|`[*]`
+`+`|get value at end of path|`$.title+`
+`?(expression)`|where clause (expression can reference current json node with @)|`?(@.title == "ABC")`
   
-expression   
-`@` = current node  
+  
+Expressions  
+- paths (that start from current node `@`)
+- numbers (integers, floats, scientific notation)
+- mathematical operators (+ - / * ^)
+- numerical comparisos (< <= > >=)
+- logic operators (&& || == !=)
+- parentheses `(2 < (3 * 5))`
+- static values like (`true`, `false`)
+- `@.value > 0.5`
+
 Example: this will only return tags of all items that match this expression.
 `$.Items[*]?(@.title == "A Tale of Two Cities").tags`  
 
