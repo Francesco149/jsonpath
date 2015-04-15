@@ -45,7 +45,7 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 	case pathWildcard:
 		k.typ = opTypeIndexWild
 		k.indexStart = 0
-		k.indexEnd = math.MaxInt64
+		k.indexEnd = math.MaxInt32
 		if t, ok = tr.next(); !ok {
 			return nil, errors.New("Expected ] after *, but got none")
 		}
@@ -80,7 +80,7 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 					return nil, errors.New("Expected ], but got none")
 				}
 			case pathBracketRight:
-				k.indexEnd = math.MaxInt64
+				k.indexEnd = math.MaxInt32
 			default:
 				return nil, fmt.Errorf("Unexpected value within brackets after index: %q", t.val)
 			}
