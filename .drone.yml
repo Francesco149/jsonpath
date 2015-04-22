@@ -19,11 +19,3 @@ script:
   - go test -v -race ./...
    # Run benchmarks
   - go test -bench=. -test.run PC -test.benchmem ./...
-notify:
-  slack:
-    webhook_url: 'https://hooks.slack.com/services/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'
-    channel: '#build'
-    username: drone
-    on_success: true
-    on_failure: true
-
