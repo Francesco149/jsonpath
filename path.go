@@ -3,7 +3,6 @@ package jsonpath
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 )
 
@@ -23,10 +22,11 @@ type Path struct {
 }
 
 type operator struct {
-	typ        int
-	indexStart int
-	indexEnd   int
-	keyStrings map[string]struct{}
+	typ         int
+	indexStart  int
+	indexEnd    int
+	hasIndexEnd bool
+	keyStrings  map[string]struct{}
 
 	whereClauseBytes []byte
 	dependentPaths   []*Path
@@ -45,7 +45,6 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 	case pathWildcard:
 		k.typ = opTypeIndexWild
 		k.indexStart = 0
-		k.indexEnd = math.MaxInt32
 		if t, ok = tr.next(); !ok {
 			return nil, errors.New("Expected ] after *, but got none")
 		}
@@ -59,6 +58,7 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 		}
 		k.indexStart = v
 		k.indexEnd = v
+		k.hasIndexEnd = true
 
 		if t, ok = tr.next(); !ok {
 			return nil, errors.New("Expected number or *, but got none")
@@ -75,12 +75,13 @@ func genIndexKey(tr tokenReader) (*operator, error) {
 					return nil, fmt.Errorf("Could not parse %q into int64", t.val)
 				}
 				k.indexEnd = v - 1
+				k.hasIndexEnd = true
 
 				if t, ok = tr.next(); !ok || t.typ != pathBracketRight {
 					return nil, errors.New("Expected ], but got none")
 				}
 			case pathBracketRight:
-				k.indexEnd = math.MaxInt32
+				k.hasIndexEnd = false
 			default:
 				return nil, fmt.Errorf("Unexpected value within brackets after index: %q", t.val)
 			}

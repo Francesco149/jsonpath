@@ -328,7 +328,7 @@ func itemMatchOperator(loc interface{}, i *Item, op *operator) bool {
 		case opTypeIndexWild:
 			return true
 		case opTypeIndex, opTypeIndexRange:
-			return topInt >= op.indexStart && topInt <= op.indexEnd
+			return topInt >= op.indexStart && (!op.hasIndexEnd || topInt <= op.indexEnd)
 		}
 	}
 	return false
