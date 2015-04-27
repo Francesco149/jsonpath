@@ -52,7 +52,7 @@ func TestPathQuery(t *testing.T) {
 			if as.NoError(err, "Testing: %s", t.name) {
 				res := toResultArray(eval)
 				if as.NoError(eval.Error) {
-					as.Equal(t.expected, res, "Testing of %q", t.name)
+					as.EqualValues(t.expected, res, "Testing of %q", t.name)
 				}
 			}
 		}

@@ -35,6 +35,6 @@ func TestExpressionTokens(t *testing.T) {
 			}
 		}
 
-		as.Equal(types, test.tokenTypes, "Testing of %s: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, exprTokenNames), typesDescription(test.tokenTypes, exprTokenNames))
+		as.EqualValues(types, test.tokenTypes, "Testing of %s: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, exprTokenNames), typesDescription(test.tokenTypes, exprTokenNames))
 	}
 }

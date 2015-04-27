@@ -25,6 +25,6 @@ func TestValidPaths(t *testing.T) {
 		lexer := NewSliceLexer([]byte(test.input), PATH)
 		types := itemsToTypes(readerToArray(lexer))
 
-		as.Equal(types, test.tokenTypes, "Testing of %s: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, pathTokenNames), typesDescription(test.tokenTypes, pathTokenNames))
+		as.EqualValues(types, test.tokenTypes, "Testing of %s: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, pathTokenNames), typesDescription(test.tokenTypes, pathTokenNames))
 	}
 }

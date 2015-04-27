@@ -15,35 +15,35 @@ import (
 
 func testLexerMethods(l lexer, as *assert.Assertions) {
 	s := l.peek()
-	as.Equal('{', s, "First rune should match")
+	as.EqualValues('{', s, "First rune should match")
 	r := l.take()
-	as.Equal('{', r, "First rune should match")
+	as.EqualValues('{', r, "First rune should match")
 	r = l.take()
-	as.Equal('"', r, "Second rune should match")
+	as.EqualValues('"', r, "Second rune should match")
 	r = l.take()
-	as.Equal('k', r, "Third rune should match")
+	as.EqualValues('k', r, "Third rune should match")
 	// Try peeking
 	r = l.peek()
-	as.Equal('e', r, "Peek fifth rune should match")
+	as.EqualValues('e', r, "Peek fifth rune should match")
 	// Second peek should yield same result
 	r = l.peek()
-	as.Equal('e', r, "Peek fifth rune should match")
+	as.EqualValues('e', r, "Peek fifth rune should match")
 	r = l.take()
 	// Taking should yield peeked result
-	as.Equal('e', r, "Rune should match")
+	as.EqualValues('e', r, "Rune should match")
 	// Taking should yield next result
 	r = l.take()
-	as.Equal('y', r, "Rune should match")
+	as.EqualValues('y', r, "Rune should match")
 	r = l.take()
-	as.Equal('"', r, "Rune should match")
+	as.EqualValues('"', r, "Rune should match")
 	r = l.peek()
-	as.Equal(' ', r, "Rune should match")
+	as.EqualValues(' ', r, "Rune should match")
 
 	l.take()
 	l.ignore()
 
 	r = l.peek()
-	as.Equal(':', r, "Rune should match")
+	as.EqualValues(':', r, "Rune should match")
 }
 
 func TestLexerMethods(t *testing.T) {
@@ -105,7 +105,7 @@ func TestBytesLexerReset(t *testing.T) {
 	lexer.reset()
 	sitems2 := readerToArray(lexer)
 
-	as.Equal(sitems, sitems2)
+	as.EqualValues(sitems, sitems2)
 }
 
 func TestReaderLexerReset(t *testing.T) {
@@ -118,7 +118,7 @@ func TestReaderLexerReset(t *testing.T) {
 	reader.Seek(0, 0)
 	ritems2 := readerToArray(lexer)
 
-	as.Equal(ritems, ritems2, "Item slices are not equal")
+	as.EqualValues(ritems, ritems2, "Item slices are not equal")
 }
 
 func TestLexersAgainstEachOther(t *testing.T) {
@@ -130,7 +130,7 @@ func TestLexersAgainstEachOther(t *testing.T) {
 	rlexer := NewReaderLexer(reader, JSON)
 	ritems := readerToArray(rlexer)
 
-	as.Equal(sitems, ritems)
+	as.EqualValues(sitems, ritems)
 }
 
 func TestLargeJSON(t *testing.T) {

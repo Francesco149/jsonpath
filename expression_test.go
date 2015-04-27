@@ -153,7 +153,7 @@ func TestExpressions(t *testing.T) {
 		if as.NoError(err, "Could not transform to postfix\nTest: %q", test.input) {
 			val, err := evaluatePostFix(items_post, test.fields)
 			if as.NoError(err, "Could not evaluate postfix\nTest Input: %q\nTest Values:%q\nError:%q", test.input, test.fields, err) {
-				as.Equal(test.expectedValue, val, "\nTest: %q\nActual: %v \nExpected %v\n", test.input, val, test.expectedValue)
+				as.EqualValues(test.expectedValue, val, "\nTest: %q\nActual: %v \nExpected %v\n", test.input, val, test.expectedValue)
 			}
 		}
 	}

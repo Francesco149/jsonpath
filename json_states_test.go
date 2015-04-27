@@ -29,7 +29,7 @@ func TestValidJson(t *testing.T) {
 		lexer := NewSliceLexer([]byte(test.input), JSON)
 		types := itemsToTypes(readerToArray(lexer))
 
-		as.Equal(types, test.tokenTypes, "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, jsonTokenNames), typesDescription(test.tokenTypes, jsonTokenNames))
+		as.EqualValues(types, test.tokenTypes, "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, jsonTokenNames), typesDescription(test.tokenTypes, jsonTokenNames))
 	}
 }
 
@@ -54,7 +54,7 @@ func TestMalformedJson(t *testing.T) {
 		lexer := NewSliceLexer([]byte(test.input), JSON)
 		types := itemsToTypes(readerToArray(lexer))
 
-		as.Equal(types, test.tokenTypes, "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, jsonTokenNames), typesDescription(test.tokenTypes, jsonTokenNames))
+		as.EqualValues(types, test.tokenTypes, "Testing of %q: \nactual\n\t%+v\nexpected\n\t%v", test.name, typesDescription(types, jsonTokenNames), typesDescription(test.tokenTypes, jsonTokenNames))
 	}
 }
 

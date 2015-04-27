@@ -31,10 +31,10 @@ func TestQueryOperators(t *testing.T) {
 		path, err := parsePath(t.path)
 		as.NoError(err)
 
-		as.Equal(len(t.expected), len(path.operators))
+		as.EqualValues(len(t.expected), len(path.operators))
 
 		for x, op := range t.expected {
-			as.Equal(pathTokenNames[op], pathTokenNames[path.operators[x].typ])
+			as.EqualValues(pathTokenNames[op], pathTokenNames[path.operators[x].typ])
 		}
 	}
 }
