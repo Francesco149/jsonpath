@@ -165,8 +165,35 @@ var exprErrorTests = []struct {
 	expectedErrorSubstring string
 }{
 	{"@a == @b", map[string]Item{"@a": genValue(`"one"`, jsonString), "@b": genValue("3.4", jsonNumber)}, "cannot be compared"},
+	{")(", nil, "Mismatched parentheses"},
+	{")123", nil, "Mismatched parentheses"},
 	{"20 == null", nil, "cannot be compared"},
 	{`"toronto" == null`, nil, "cannot be compared"},
+	{`false == 20`, nil, "cannot be compared"},
+	{`"nick" == 20`, nil, "cannot be compared"},
+	{"20 != null", nil, "cannot be compared"},
+	{`"toronto" != null`, nil, "cannot be compared"},
+	{`false != 20`, nil, "cannot be compared"},
+	{`"nick" != 20`, nil, "cannot be compared"},
+	{``, nil, "Bad Expression"},
+	{`==`, nil, "Bad Expression"},
+	{`!=`, nil, "Not enough operands"},
+
+	{`!23`, nil, "cannot be compared"},
+	{`"nick" || true`, nil, "cannot be compared"},
+	{`"nick" >=  3.2`, nil, "cannot be compared"},
+	{`"nick" >3.2`, nil, "cannot be compared"},
+	{`"nick" <=  3.2`, nil, "cannot be compared"},
+	{`"nick" <  3.2`, nil, "cannot be compared"},
+	{`"nick" +  3.2`, nil, "cannot be compared"},
+	{`"nick" -  3.2`, nil, "cannot be compared"},
+	{`"nick" /  3.2`, nil, "cannot be compared"},
+	{`"nick" *  3.2`, nil, "cannot be compared"},
+	{`"nick" %  3.2`, nil, "cannot be compared"},
+	{`"nick"+`, nil, "cannot be compared"},
+	{`"nick"-`, nil, "cannot be compared"},
+	{`"nick"^3.2`, nil, "cannot be compared"},
+
 	{`@a == null`, map[string]Item{"@a": genValue(`3.41`, jsonNumber)}, "cannot be compared"},
 }
 
@@ -184,10 +211,14 @@ func TestBadExpressions(t *testing.T) {
 		// trim EOF
 		items = items[0 : len(items)-1]
 		items_post, err := infixToPostFix(items)
+		if err != nil {
+			as.True(strings.Contains(err.Error(), test.expectedErrorSubstring), "Test Input: %q\nError %q does not contain %q", test.input, err.Error(), test.expectedErrorSubstring)
+			continue
+		}
 		if as.NoError(err, "Could not transform to postfix\nTest: %q", test.input) {
 			_, err := evaluatePostFix(items_post, test.fields)
-			if as.Error(err, "Could not evaluate postfix\nTest Input: %q\nTest Values:%q\nError:%q", test.input, test.fields, err) {
-				as.True(strings.Contains(err.Error(), test.expectedErrorSubstring), "Test Input: %q\nError %q does not contain %q", test.input, err.Error(), test.expectedErrorSubstring)
+			if as.Error(err, "Could not evaluate postfix\nTest Input: %q\nTest Values:%q\nError:%s", test.input, test.fields, err) {
+				as.True(strings.Contains(err.Error(), test.expectedErrorSubstring), "Test Input: %q\nError %s does not contain %q", test.input, err.Error(), test.expectedErrorSubstring)
 			}
 
 		}

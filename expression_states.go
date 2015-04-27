@@ -33,16 +33,16 @@ const (
 )
 
 var exprTokenNames = map[int]string{
-	exprError: "ERROR",
+	exprError: "error",
 	exprEOF:   "EOF",
 
 	exprParenLeft:  "(",
 	exprParenRight: ")",
-	exprNumber:     "NUMBER",
-	exprPath:       "PATH",
-	exprBool:       "BOOL",
-	exprNull:       "NULL",
-	exprString:     "STRING",
+	exprNumber:     "number",
+	exprPath:       "path",
+	exprBool:       "bool",
+	exprNull:       "null",
+	exprString:     "string",
 	exprOpEq:       "==",
 	exprOpNeq:      "!=",
 	exprOpNot:      "!",

@@ -1,6 +1,7 @@
 package jsonpath
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,6 +52,14 @@ func TestPathQuery(t *testing.T) {
 			eval, err := EvalPathsInBytes([]byte(t.json), paths)
 			if as.NoError(err, "Testing: %s", t.name) {
 				res := toResultArray(eval)
+				if as.NoError(eval.Error) {
+					as.EqualValues(t.expected, res, "Testing of %q", t.name)
+				}
+			}
+
+			eval_reader, err := EvalPathsInReader(strings.NewReader(t.json), paths)
+			if as.NoError(err, "Testing: %s", t.name) {
+				res := toResultArray(eval_reader)
 				if as.NoError(eval.Error) {
 					as.EqualValues(t.expected, res, "Testing of %q", t.name)
 				}
