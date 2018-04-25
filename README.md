@@ -1,4 +1,4 @@
-[![Coverage](http://gocover.io/_badge/github.com/NodePrime/jsonpath)](http://gocover.io/github.com/NodePrime/jsonpath)
+[![Coverage](http://gocover.io/_badge/github.com/Francesco149/jsonpath)](http://gocover.io/github.com/Francesco149/jsonpath)
 # jsonpath  
   
 jsonpath is used to pull values out of a JSON document without unmarshalling the string into an object.  At the loss of post-parse random access and conversion to primitive types, you gain faster return speeds and lower memory utilization.  If the value you want is located near the start of the json, the evaluator will terminate after reaching and recording its destination.  
@@ -9,7 +9,7 @@ For each value returned by a path, you'll also get the keys & indexes needed to 
   
 ### CLI   
 ```shell
-go get github.com/NodePrime/jsonpath/cli/jsonpath
+go get github.com/Francesco149/jsonpath/cli/jsonpath
 cat yourData.json | jsonpath -k -p '$.Items[*].title+'
 ```
 
@@ -23,7 +23,7 @@ cat yourData.json | jsonpath -k -p '$.Items[*].title+'
 
   
 ### Go Package  
-go get github.com/NodePrime/jsonpath  
+go get github.com/Francesco149/jsonpath  
  
 ```go
 paths, err := jsonpath.ParsePaths(pathStrings ...string) {
